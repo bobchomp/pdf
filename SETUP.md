@@ -121,33 +121,51 @@ openssl rand -base64 32
 Set the result as `AUTH_SECRET`. Set `NEXTAUTH_URL` to `http://localhost:3000` locally,
 and to your real deployed URL in production.
 
-## 5. Install, migrate, and create your first login
+## 5. Install and create the D1 tables
 
 ```bash
 npm install
 npm run db:push          # creates the D1 tables (needs .env, see step 2)
+```
+
+## 6. Deploying
+
+Push this repo to GitHub and import it in Vercel, or run `vercel deploy`. Add every
+variable from `.env.example` to the project's Environment Variables in the Vercel
+dashboard (production **and** preview if you use preview deployments), and update
+`NEXTAUTH_URL` and the R2 CORS `AllowedOrigins` to match your real domain.
+
+## 7. Create your first (admin) login
+
+Visit `/setup` on your deployed app (e.g. `https://your-app.vercel.app/setup`) and fill
+in the form. This page only works **once** — the moment an account exists, it stops
+accepting new ones and just points you at `/login` instead, so there's no lasting way in
+through it. Skip straight to running it right after your first deploy so the window
+where the URL works is as short as possible; you don't need to keep it secret indefinitely,
+but don't leave a fresh deploy sitting unclaimed either.
+
+Once you have your account, add teammates from the **Team** page in the dashboard
+instead — everyone with a login shares the same flipbook library (there's no per-user
+isolation; this is meant for a small team, not a public multi-tenant service).
+
+Prefer the command line? The same thing works locally without deploying first:
+
+```bash
 npm run seed:user -- you@example.com "a-strong-password" "Your Name" admin
 ```
 
-That last command creates your first account with the `admin` role, which can add
-teammates from the **Team** page in the dashboard. Everyone with a login shares the same
-flipbook library (there's no per-user isolation — this is meant for a small team, not a
-public multi-tenant service).
+This needs Node 20.6+ (it uses `process.loadEnvFile`) and a working local `.env` — see
+step 2. If you hit `'tsx' is not recognized`, run `npm install` first. If you get a
+Cloudflare "Authentication error", double check `.env` has no quotes, no stray angle
+brackets left over from a placeholder, and the exact token/IDs from steps 1–2.
 
-## 6. Run it
+## 8. Run it locally (optional)
 
 ```bash
 npm run dev
 ```
 
 Visit http://localhost:3000, sign in, and upload a PDF.
-
-## 7. Deploying
-
-Push this repo to GitHub and import it in Vercel, or run `vercel deploy`. Add every
-variable from `.env.example` to the project's Environment Variables in the Vercel
-dashboard (production **and** preview if you use preview deployments), and update
-`NEXTAUTH_URL` and the R2 CORS `AllowedOrigins` to match your real domain.
 
 ---
 
