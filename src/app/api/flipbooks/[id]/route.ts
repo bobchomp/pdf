@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { requireSession } from "@/lib/require-session";
 import { deleteFlipbook, getFlipbookById, setFlipbookPassword, updateFlipbook } from "@/lib/flipbooks";
+import { deleteObject } from "@/lib/r2";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error } = await requireSession();
@@ -20,6 +21,7 @@ const patchSchema = z.object({
   allowPrint: z.boolean().optional(),
   themeColor: z.string().max(20).optional(),
   showToolbar: z.boolean().optional(),
+  backgroundImageR2Key: z.string().min(1).nullable().optional(),
   password: z.string().min(1).max(200).nullable().optional(),
 });
 
@@ -41,6 +43,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (password !== undefined) {
     await setFlipbookPassword(id, password);
+  }
+
+  if (
+    rest.backgroundImageR2Key !== undefined &&
+    existing.backgroundImageR2Key &&
+    existing.backgroundImageR2Key !== rest.backgroundImageR2Key
+  ) {
+    await deleteObject(existing.backgroundImageR2Key).catch(() => {});
   }
 
   if (Object.keys(rest).length > 0) {

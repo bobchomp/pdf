@@ -1,0 +1,1 @@
+ALTER TABLE `flipbooks` ADD `background_image_r2_key` text;

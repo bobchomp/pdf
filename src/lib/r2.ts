@@ -6,7 +6,6 @@ const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 const ACCESS_KEY_ID = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
 const SECRET_ACCESS_KEY = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
 export const R2_BUCKET_NAME = process.env.CLOUDFLARE_R2_BUCKET_NAME || "flipbook-storage";
-export const R2_PUBLIC_URL = process.env.CLOUDFLARE_R2_PUBLIC_URL || "";
 
 function assertConfigured() {
   if (!ACCOUNT_ID || !ACCESS_KEY_ID || !SECRET_ACCESS_KEY) {
@@ -52,18 +51,14 @@ export async function deleteObject(key: string) {
   await r2Client().send(new DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key }));
 }
 
-/** Public URL for an object, assuming the bucket is served publicly (r2.dev or custom domain). */
-export function publicObjectUrl(key: string) {
-  if (!R2_PUBLIC_URL) {
-    throw new Error("CLOUDFLARE_R2_PUBLIC_URL is not set. See SETUP.md.");
-  }
-  return `${R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`;
-}
-
 export function flipbookPdfKey(flipbookId: string, filename: string) {
   return `flipbooks/${flipbookId}/original/${filename}`;
 }
 
 export function flipbookCoverKey(flipbookId: string, filename: string) {
   return `flipbooks/${flipbookId}/cover/${filename}`;
+}
+
+export function flipbookBackgroundKey(flipbookId: string, filename: string) {
+  return `flipbooks/${flipbookId}/background/${filename}`;
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 type Flipbook = {
   id: string;
@@ -15,11 +16,18 @@ type Flipbook = {
   allowPrint: boolean;
   themeColor: string;
   showToolbar: boolean;
+  backgroundImageR2Key: string | null;
 };
 
 type Stats = { totalViews: number; last30Days: { date: string; count: number }[] };
 
-export function FlipbookSettings({ flipbook: initial }: { flipbook: Flipbook }) {
+export function FlipbookSettings({
+  flipbook: initial,
+  initialBackgroundImageUrl,
+}: {
+  flipbook: Flipbook;
+  initialBackgroundImageUrl: string | null;
+}) {
   const router = useRouter();
   const [flipbook, setFlipbook] = useState(initial);
   const [titleDraft, setTitleDraft] = useState(initial.title);
@@ -28,6 +36,8 @@ export function FlipbookSettings({ flipbook: initial }: { flipbook: Flipbook }) 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState(initialBackgroundImageUrl);
+  const [uploadingBackground, setUploadingBackground] = useState(false);
   const [origin] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
 
   useEffect(() => {
@@ -69,6 +79,60 @@ export function FlipbookSettings({ flipbook: initial }: { flipbook: Flipbook }) 
   function copy(text: string) {
     navigator.clipboard.writeText(text);
     setMessage("Copied to clipboard.");
+  }
+
+  async function handleBackgroundUpload(file: File) {
+    setUploadingBackground(true);
+    setMessage(null);
+    try {
+      const presignRes = await fetch(`/api/flipbooks/${flipbook.id}/background-upload-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, contentType: file.type || "image/jpeg" }),
+      });
+      const { uploadUrl, key } = await presignRes.json();
+
+      const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type || "image/jpeg" }, body: file });
+      if (!putRes.ok) throw new Error("Failed to upload image.");
+
+      const res = await fetch(`/api/flipbooks/${flipbook.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ backgroundImageR2Key: key }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to save background image.");
+
+      setFlipbook((prev) => ({ ...prev, ...data.flipbook }));
+      setBackgroundImageUrl(URL.createObjectURL(file));
+      setMessage("Background image updated.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Failed to upload background image.");
+    } finally {
+      setUploadingBackground(false);
+    }
+  }
+
+  async function handleRemoveBackground() {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/flipbooks/${flipbook.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ backgroundImageR2Key: null }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setFlipbook((prev) => ({ ...prev, ...data.flipbook }));
+        setBackgroundImageUrl(null);
+        setMessage("Background image removed.");
+      } else {
+        setMessage(data.error ?? "Failed to remove background image.");
+      }
+    } finally {
+      setSaving(false);
+    }
   }
 
   const maxCount = Math.max(1, ...(stats?.last30Days.map((d) => d.count) ?? [1]));
@@ -239,6 +303,46 @@ export function FlipbookSettings({ flipbook: initial }: { flipbook: Flipbook }) 
               className="h-8 w-14 cursor-pointer rounded border border-slate-300"
             />
           </div>
+          <div className="flex items-center justify-between gap-3">
+            <span>Background image</span>
+            <div className="flex items-center gap-2">
+              {backgroundImageUrl && (
+                <Image
+                  src={backgroundImageUrl}
+                  alt=""
+                  width={56}
+                  height={32}
+                  unoptimized
+                  className="h-8 w-14 rounded border border-slate-300 object-cover"
+                />
+              )}
+              <label className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+                {uploadingBackground ? "Uploading…" : backgroundImageUrl ? "Replace" : "Upload"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingBackground}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleBackgroundUpload(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {backgroundImageUrl && (
+                <button onClick={handleRemoveBackground} disabled={saving} className="text-sm text-slate-500 underline hover:text-slate-800">
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+          {backgroundImageUrl && (
+            <p className="text-xs text-slate-400">
+              The background image covers the whole viewer behind the pages; the background color above still shows through
+              while it loads or if it fails to load.
+            </p>
+          )}
         </div>
       </section>
 

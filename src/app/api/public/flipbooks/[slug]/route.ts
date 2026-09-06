@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { getFlipbookBySlug } from "@/lib/flipbooks";
 import { flipbookAccessCookieName, verifyFlipbookAccessToken } from "@/lib/access-token";
-import { publicObjectUrl } from "@/lib/r2";
+import { createPresignedGetUrl } from "@/lib/r2";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -19,14 +19,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     unlocked = verifyFlipbookAccessToken(flipbook.id, token);
   }
 
-  let coverUrl: string | null = null;
-  if (flipbook.coverImageR2Key) {
-    try {
-      coverUrl = publicObjectUrl(flipbook.coverImageR2Key);
-    } catch {
-      coverUrl = null;
-    }
-  }
+  const [coverUrl, backgroundImageUrl] = await Promise.all([
+    flipbook.coverImageR2Key ? createPresignedGetUrl(flipbook.coverImageR2Key).catch(() => null) : null,
+    flipbook.backgroundImageR2Key ? createPresignedGetUrl(flipbook.backgroundImageR2Key).catch(() => null) : null,
+  ]);
 
   return Response.json({
     flipbook: {
@@ -41,6 +37,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       themeColor: flipbook.themeColor,
       showToolbar: flipbook.showToolbar,
       coverUrl,
+      backgroundImageUrl,
       unlocked,
     },
   });

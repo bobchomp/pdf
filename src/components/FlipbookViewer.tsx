@@ -42,6 +42,7 @@ export function FlipbookViewer({
   pageCount,
   title,
   themeColor,
+  backgroundImageUrl,
   showToolbar,
   allowDownload,
   allowPrint,
@@ -50,6 +51,7 @@ export function FlipbookViewer({
   pageCount: number;
   title: string;
   themeColor: string;
+  backgroundImageUrl?: string | null;
   showToolbar: boolean;
   allowDownload: boolean;
   allowPrint: boolean;
@@ -188,7 +190,16 @@ export function FlipbookViewer({
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col items-center gap-2" style={{ background: themeColor }}>
+    <div
+      className="flex h-full min-h-0 w-full flex-col items-center gap-2"
+      style={{
+        backgroundColor: themeColor,
+        backgroundImage: backgroundImageUrl ? `url("${backgroundImageUrl}")` : undefined,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
       {showToolbar && (
         <div className="flex w-full max-w-4xl shrink-0 items-center justify-between px-4 pt-3 text-sm text-white/90">
           <span className="truncate font-medium">{title}</span>

@@ -99,18 +99,8 @@ CORS Policy**, add:
 
 Update `AllowedOrigins` to match your real deployed domain(s) once you have one.
 
-### (Optional) Public bucket URL for cover thumbnails
-
-Cover thumbnails are normally served through short-lived signed URLs, so this is
-optional. If you'd rather serve them from a public URL, enable **Public access** on the
-bucket (R2.dev subdomain, or a custom domain) and set:
-
-```
-CLOUDFLARE_R2_PUBLIC_URL=https://pub-xxxxxxxx.r2.dev
-```
-
-Leave it blank if you don't want to bother — thumbnails will just use signed URLs
-instead, which works fine.
+Nothing needs to be public — cover thumbnails and custom background images are both
+served through short-lived signed URLs, same as the PDF itself.
 
 ## 4. Auth secret
 
