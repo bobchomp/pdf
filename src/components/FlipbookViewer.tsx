@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { loadPdf } from "@/lib/pdf-client";
-import { playPageFlipSound } from "@/lib/page-flip-sound";
 import { PdfPage } from "@/components/PdfPage";
 import { IconChevronLeft, IconChevronRight, IconDownload, IconPrint, IconFullscreen } from "@/components/icons";
 
@@ -333,10 +332,7 @@ export function FlipbookViewer({
               swipeDistance={30}
               showPageCorners={true}
               disableFlipByClick={false}
-              onFlip={(e: { data: number }) => {
-                setCurrentPage(e.data);
-                playPageFlipSound();
-              }}
+              onFlip={(e: { data: number }) => setCurrentPage(e.data)}
               onInit={(e: { data: { mode: "portrait" | "landscape" } }) => setOrientation(e.data.mode)}
               onChangeOrientation={(e: { data: "portrait" | "landscape" }) => setOrientation(e.data)}
             >
