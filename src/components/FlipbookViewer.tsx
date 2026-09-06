@@ -12,6 +12,24 @@ const HTMLFlipBook = dynamic(() => import("react-pageflip"), { ssr: false }) as 
 
 const RENDER_WINDOW = 3;
 
+/**
+ * react-pageflip (showCover=true) always reserves a two-page-wide box, centered in its
+ * container, and puts a lone cover page in just the right or left half of it — never both.
+ * That leaves the visible page off-center. This mirrors PageCollection's own spread-building
+ * logic (page-flip/src/Collection/PageCollection.ts) to know, for a given page and total count,
+ * whether it's alone and on which side, so we can shift the whole book to compensate.
+ */
+function coverShiftDirection(currentPage: number, pageCount: number): "left" | "right" | null {
+  if (pageCount <= 0) return null;
+  if (currentPage === 0) {
+    // The single-page book edge case: page 0 is simultaneously "the cover" and "the last
+    // page", and the library's own tie-break assigns it to the left slot, not the right.
+    return pageCount === 1 ? "right" : "left";
+  }
+  const isTrailingLoneBackCover = pageCount > 1 && pageCount % 2 === 0 && currentPage === pageCount - 1;
+  return isTrailingLoneBackCover ? "right" : null;
+}
+
 export function FlipbookViewer({
   pdfUrl,
   pageCount,
@@ -32,6 +50,7 @@ export function FlipbookViewer({
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
+  const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
   const flipBookRef = useRef<{ pageFlip: () => { flipNext: () => void; flipPrev: () => void } } | null>(null);
 
   useEffect(() => {
@@ -52,6 +71,12 @@ export function FlipbookViewer({
     if (!doc) return [];
     return Array.from({ length: pageCount }, (_, i) => i + 1);
   }, [doc, pageCount]);
+
+  const shift = orientation === "landscape" ? coverShiftDirection(currentPage, pageCount) : null;
+  const flipBookStyle: React.CSSProperties = {
+    transition: "transform 300ms ease",
+    transform: shift === "left" ? "translateX(-25%) translateZ(0)" : shift === "right" ? "translateX(25%) translateZ(0)" : "translateZ(0)",
+  };
 
   function handleDownload() {
     const a = document.createElement("a");
@@ -119,7 +144,7 @@ export function FlipbookViewer({
           showCover={true}
           mobileScrollSupport={true}
           className="shadow-2xl"
-          style={{}}
+          style={flipBookStyle}
           startPage={0}
           drawShadow={true}
           flippingTime={500}
@@ -132,6 +157,8 @@ export function FlipbookViewer({
           showPageCorners={true}
           disableFlipByClick={false}
           onFlip={(e: { data: number }) => setCurrentPage(e.data)}
+          onInit={(e: { data: { mode: "portrait" | "landscape" } }) => setOrientation(e.data.mode)}
+          onChangeOrientation={(e: { data: "portrait" | "landscape" }) => setOrientation(e.data)}
         >
           {pages.map((pageNumber) => (
             <div key={pageNumber} className="bg-white">
