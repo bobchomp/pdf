@@ -9,8 +9,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Flipbooks",
-  description: "Self-hosted PDF flipbook viewer",
+  title: "Smithton Church Newsletter",
+  description: "Smithton Church's digital newsletter, hosted online.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

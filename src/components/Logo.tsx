@@ -24,7 +24,7 @@ export function Logo({ size = 24, textClassName = "text-lg" }: { size?: number; 
   return (
     <div className="flex items-center gap-2.5">
       <LogoMark size={size} />
-      <span className={`font-semibold text-navy-900 ${textClassName}`}>Flipbooks</span>
+      <span className={`font-semibold text-navy-900 ${textClassName}`}>Smithton Church Newsletter</span>
     </div>
   );
 }

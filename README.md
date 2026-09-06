@@ -1,4 +1,4 @@
-# Flipbooks
+# Smithton Church Newsletter
 
 A self-hosted alternative to FlipbookPDF: upload a PDF, get a realistic page-turning
 viewer you can share as a link or embed on your own site — backed by your own
