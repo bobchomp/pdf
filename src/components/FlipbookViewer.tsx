@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { loadPdf } from "@/lib/pdf-client";
 import { PdfPage } from "@/components/PdfPage";
@@ -43,6 +44,8 @@ export function FlipbookViewer({
   title,
   themeColor,
   backgroundImageUrl,
+  logoUrl,
+  logoLinkUrl,
   showToolbar,
   allowDownload,
   allowPrint,
@@ -52,6 +55,8 @@ export function FlipbookViewer({
   title: string;
   themeColor: string;
   backgroundImageUrl?: string | null;
+  logoUrl?: string | null;
+  logoLinkUrl?: string | null;
   showToolbar: boolean;
   allowDownload: boolean;
   allowPrint: boolean;
@@ -191,7 +196,7 @@ export function FlipbookViewer({
 
   return (
     <div
-      className="flex h-full min-h-0 w-full flex-col items-center gap-2"
+      className="relative flex h-full min-h-0 w-full flex-col items-center gap-2"
       style={{
         backgroundColor: themeColor,
         backgroundImage: backgroundImageUrl ? `url("${backgroundImageUrl}")` : undefined,
@@ -282,6 +287,18 @@ export function FlipbookViewer({
         <p className="shrink-0 pb-3 text-sm tabular-nums text-white/60">
           {currentPage + 1} / {pageCount}
         </p>
+      )}
+
+      {logoUrl && (
+        <div className="absolute bottom-3 left-3 z-10">
+          {logoLinkUrl ? (
+            <a href={logoLinkUrl} target="_blank" rel="noopener noreferrer">
+              <Image src={logoUrl} alt="" width={160} height={40} unoptimized className="h-10 w-auto max-w-[160px] object-contain drop-shadow" />
+            </a>
+          ) : (
+            <Image src={logoUrl} alt="" width={160} height={40} unoptimized className="h-10 w-auto max-w-[160px] object-contain drop-shadow" />
+          )}
+        </div>
       )}
     </div>
   );

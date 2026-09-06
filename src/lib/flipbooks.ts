@@ -52,6 +52,8 @@ export type FlipbookSettingsPatch = Partial<{
   showToolbar: boolean;
   coverImageR2Key: string | null;
   backgroundImageR2Key: string | null;
+  logoR2Key: string | null;
+  logoLinkUrl: string | null;
   pageCount: number;
   fileSizeBytes: number;
   status: "processing" | "ready" | "error";
@@ -90,6 +92,9 @@ export async function deleteFlipbook(id: string) {
   }
   if (flipbook.backgroundImageR2Key) {
     await deleteObject(flipbook.backgroundImageR2Key).catch(() => {});
+  }
+  if (flipbook.logoR2Key) {
+    await deleteObject(flipbook.logoR2Key).catch(() => {});
   }
 
   await db.delete(schema.flipbookViews).where(eq(schema.flipbookViews.flipbookId, id));

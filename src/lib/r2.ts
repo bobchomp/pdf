@@ -62,3 +62,7 @@ export function flipbookCoverKey(flipbookId: string, filename: string) {
 export function flipbookBackgroundKey(flipbookId: string, filename: string) {
   return `flipbooks/${flipbookId}/background/${filename}`;
 }
+
+export function flipbookLogoKey(flipbookId: string, filename: string) {
+  return `flipbooks/${flipbookId}/logo/${filename}`;
+}

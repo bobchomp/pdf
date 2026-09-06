@@ -17,16 +17,21 @@ type Flipbook = {
   themeColor: string;
   showToolbar: boolean;
   backgroundImageR2Key: string | null;
+  logoR2Key: string | null;
+  logoLinkUrl: string | null;
 };
 
 type Stats = { totalViews: number; last30Days: { date: string; count: number }[] };
+type ImageField = "backgroundImageR2Key" | "logoR2Key";
 
 export function FlipbookSettings({
   flipbook: initial,
   initialBackgroundImageUrl,
+  initialLogoUrl,
 }: {
   flipbook: Flipbook;
   initialBackgroundImageUrl: string | null;
+  initialLogoUrl: string | null;
 }) {
   const router = useRouter();
   const [flipbook, setFlipbook] = useState(initial);
@@ -38,6 +43,9 @@ export function FlipbookSettings({
   const [stats, setStats] = useState<Stats | null>(null);
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(initialBackgroundImageUrl);
   const [uploadingBackground, setUploadingBackground] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(initialLogoUrl);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoLinkDraft, setLogoLinkDraft] = useState(initial.logoLinkUrl ?? "");
   const [origin] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
 
   useEffect(() => {
@@ -81,11 +89,18 @@ export function FlipbookSettings({
     setMessage("Copied to clipboard.");
   }
 
-  async function handleBackgroundUpload(file: File) {
-    setUploadingBackground(true);
+  async function uploadImage(
+    file: File,
+    field: ImageField,
+    uploadUrlEndpoint: string,
+    setPreviewUrl: (url: string | null) => void,
+    setUploading: (v: boolean) => void,
+    label: string
+  ) {
+    setUploading(true);
     setMessage(null);
     try {
-      const presignRes = await fetch(`/api/flipbooks/${flipbook.id}/background-upload-url`, {
+      const presignRes = await fetch(uploadUrlEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename: file.name, contentType: file.type || "image/jpeg" }),
@@ -93,46 +108,53 @@ export function FlipbookSettings({
       const { uploadUrl, key } = await presignRes.json();
 
       const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type || "image/jpeg" }, body: file });
-      if (!putRes.ok) throw new Error("Failed to upload image.");
+      if (!putRes.ok) throw new Error(`Failed to upload ${label}.`);
 
       const res = await fetch(`/api/flipbooks/${flipbook.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ backgroundImageR2Key: key }),
+        body: JSON.stringify({ [field]: key }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to save background image.");
+      if (!res.ok) throw new Error(data.error ?? `Failed to save ${label}.`);
 
       setFlipbook((prev) => ({ ...prev, ...data.flipbook }));
-      setBackgroundImageUrl(URL.createObjectURL(file));
-      setMessage("Background image updated.");
+      setPreviewUrl(URL.createObjectURL(file));
+      setMessage(`${label} updated.`);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Failed to upload background image.");
+      setMessage(err instanceof Error ? err.message : `Failed to upload ${label}.`);
     } finally {
-      setUploadingBackground(false);
+      setUploading(false);
     }
   }
 
-  async function handleRemoveBackground() {
+  async function removeImage(field: ImageField, setPreviewUrl: (url: string | null) => void, label: string) {
     setSaving(true);
     setMessage(null);
     try {
       const res = await fetch(`/api/flipbooks/${flipbook.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ backgroundImageR2Key: null }),
+        body: JSON.stringify({ [field]: null }),
       });
       const data = await res.json();
       if (res.ok) {
         setFlipbook((prev) => ({ ...prev, ...data.flipbook }));
-        setBackgroundImageUrl(null);
-        setMessage("Background image removed.");
+        setPreviewUrl(null);
+        setMessage(`${label} removed.`);
       } else {
-        setMessage(data.error ?? "Failed to remove background image.");
+        setMessage(data.error ?? `Failed to remove ${label}.`);
       }
     } finally {
       setSaving(false);
     }
+  }
+
+  function saveLogoLink() {
+    const trimmed = logoLinkDraft.trim();
+    const normalized = trimmed && !/^https?:\/\//i.test(trimmed) ? `https://${trimmed}` : trimmed;
+    setLogoLinkDraft(normalized);
+    patch({ logoLinkUrl: normalized || null });
   }
 
   const maxCount = Math.max(1, ...(stats?.last30Days.map((d) => d.count) ?? [1]));
@@ -325,13 +347,26 @@ export function FlipbookSettings({
                   disabled={uploadingBackground}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) handleBackgroundUpload(file);
+                    if (file) {
+                      uploadImage(
+                        file,
+                        "backgroundImageR2Key",
+                        `/api/flipbooks/${flipbook.id}/background-upload-url`,
+                        setBackgroundImageUrl,
+                        setUploadingBackground,
+                        "Background image"
+                      );
+                    }
                     e.target.value = "";
                   }}
                 />
               </label>
               {backgroundImageUrl && (
-                <button onClick={handleRemoveBackground} disabled={saving} className="text-sm text-slate-500 underline hover:text-slate-800">
+                <button
+                  onClick={() => removeImage("backgroundImageR2Key", setBackgroundImageUrl, "Background image")}
+                  disabled={saving}
+                  className="text-sm text-slate-500 underline hover:text-slate-800"
+                >
                   Remove
                 </button>
               )}
@@ -343,6 +378,67 @@ export function FlipbookSettings({
               while it loads or if it fails to load.
             </p>
           )}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-semibold text-slate-800">Branding</h2>
+        <div className="mt-3 space-y-3 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span>Logo</span>
+            <div className="flex items-center gap-2">
+              {logoUrl && (
+                <Image src={logoUrl} alt="" width={56} height={32} unoptimized className="h-8 w-14 rounded border border-slate-300 object-contain" />
+              )}
+              <label className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+                {uploadingLogo ? "Uploading…" : logoUrl ? "Replace" : "Upload"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingLogo}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      uploadImage(file, "logoR2Key", `/api/flipbooks/${flipbook.id}/logo-upload-url`, setLogoUrl, setUploadingLogo, "Logo");
+                    }
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {logoUrl && (
+                <button
+                  onClick={() => removeImage("logoR2Key", setLogoUrl, "Logo")}
+                  disabled={saving}
+                  className="text-sm text-slate-500 underline hover:text-slate-800"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-slate-400">Shown in the bottom-left corner of the viewer, over the background.</p>
+
+          <div>
+            <label className="text-xs font-medium text-slate-500">Link when the logo is clicked (optional)</label>
+            <div className="mt-1 flex gap-2">
+              <input
+                type="text"
+                value={logoLinkDraft}
+                onChange={(e) => setLogoLinkDraft(e.target.value)}
+                placeholder="https://yourwebsite.com"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+              <button
+                onClick={saveLogoLink}
+                disabled={saving || logoLinkDraft.trim() === (flipbook.logoLinkUrl ?? "")}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+              >
+                Save
+              </button>
+            </div>
+            {!logoUrl && logoLinkDraft && <p className="mt-1 text-xs text-amber-600">Upload a logo above for this link to have anywhere to go.</p>}
+          </div>
         </div>
       </section>
 

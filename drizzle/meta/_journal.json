@@ -15,6 +15,13 @@
       "when": 1788709026933,
       "tag": "0001_wooden_wendell_rand",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788709449658,
+      "tag": "0002_sweet_apocalypse",
+      "breakpoints": true
     }
   ]
 }

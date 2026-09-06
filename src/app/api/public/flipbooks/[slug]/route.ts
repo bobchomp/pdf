@@ -19,9 +19,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     unlocked = verifyFlipbookAccessToken(flipbook.id, token);
   }
 
-  const [coverUrl, backgroundImageUrl] = await Promise.all([
+  const [coverUrl, backgroundImageUrl, logoUrl] = await Promise.all([
     flipbook.coverImageR2Key ? createPresignedGetUrl(flipbook.coverImageR2Key).catch(() => null) : null,
     flipbook.backgroundImageR2Key ? createPresignedGetUrl(flipbook.backgroundImageR2Key).catch(() => null) : null,
+    flipbook.logoR2Key ? createPresignedGetUrl(flipbook.logoR2Key).catch(() => null) : null,
   ]);
 
   return Response.json({
@@ -38,6 +39,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       showToolbar: flipbook.showToolbar,
       coverUrl,
       backgroundImageUrl,
+      logoUrl,
+      logoLinkUrl: flipbook.logoLinkUrl,
       unlocked,
     },
   });

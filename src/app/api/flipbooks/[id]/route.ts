@@ -22,8 +22,12 @@ const patchSchema = z.object({
   themeColor: z.string().max(20).optional(),
   showToolbar: z.boolean().optional(),
   backgroundImageR2Key: z.string().min(1).nullable().optional(),
+  logoR2Key: z.string().min(1).nullable().optional(),
+  logoLinkUrl: z.string().max(2000).nullable().optional(),
   password: z.string().min(1).max(200).nullable().optional(),
 });
+
+const REPLACEABLE_IMAGE_FIELDS = ["backgroundImageR2Key", "logoR2Key"] as const;
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error } = await requireSession();
@@ -45,12 +49,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await setFlipbookPassword(id, password);
   }
 
-  if (
-    rest.backgroundImageR2Key !== undefined &&
-    existing.backgroundImageR2Key &&
-    existing.backgroundImageR2Key !== rest.backgroundImageR2Key
-  ) {
-    await deleteObject(existing.backgroundImageR2Key).catch(() => {});
+  for (const field of REPLACEABLE_IMAGE_FIELDS) {
+    const newKey = rest[field];
+    const oldKey = existing[field];
+    if (newKey !== undefined && oldKey && oldKey !== newKey) {
+      await deleteObject(oldKey).catch(() => {});
+    }
   }
 
   if (Object.keys(rest).length > 0) {

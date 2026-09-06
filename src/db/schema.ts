@@ -37,6 +37,8 @@ export const flipbooks = sqliteTable("flipbooks", {
   // Branding
   themeColor: text("theme_color").notNull().default("#1e293b"),
   showToolbar: integer("show_toolbar", { mode: "boolean" }).notNull().default(true),
+  logoR2Key: text("logo_r2_key"),
+  logoLinkUrl: text("logo_link_url"),
 
   status: text("status", { enum: ["processing", "ready", "error"] })
     .notNull()

@@ -16,6 +16,8 @@ type PublicFlipbook = {
   showToolbar: boolean;
   coverUrl: string | null;
   backgroundImageUrl: string | null;
+  logoUrl: string | null;
+  logoLinkUrl: string | null;
   unlocked: boolean;
 };
 
@@ -137,6 +139,8 @@ export function PublicFlipbook({ slug, embed = false }: { slug: string; embed?: 
         title={flipbook.title}
         themeColor={flipbook.themeColor}
         backgroundImageUrl={flipbook.backgroundImageUrl}
+        logoUrl={flipbook.logoUrl}
+        logoLinkUrl={flipbook.logoLinkUrl}
         showToolbar={flipbook.showToolbar}
         allowDownload={flipbook.allowDownload}
         allowPrint={flipbook.allowPrint}

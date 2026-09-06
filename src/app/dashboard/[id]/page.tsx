@@ -8,9 +8,10 @@ export default async function FlipbookDetailPage({ params }: { params: Promise<{
   const flipbook = await getFlipbookById(id);
   if (!flipbook) notFound();
 
-  const backgroundImageUrl = flipbook.backgroundImageR2Key
-    ? await createPresignedGetUrl(flipbook.backgroundImageR2Key).catch(() => null)
-    : null;
+  const [backgroundImageUrl, logoUrl] = await Promise.all([
+    flipbook.backgroundImageR2Key ? createPresignedGetUrl(flipbook.backgroundImageR2Key).catch(() => null) : null,
+    flipbook.logoR2Key ? createPresignedGetUrl(flipbook.logoR2Key).catch(() => null) : null,
+  ]);
 
   return (
     <FlipbookSettings
@@ -27,8 +28,11 @@ export default async function FlipbookDetailPage({ params }: { params: Promise<{
         themeColor: flipbook.themeColor,
         showToolbar: flipbook.showToolbar,
         backgroundImageR2Key: flipbook.backgroundImageR2Key,
+        logoR2Key: flipbook.logoR2Key,
+        logoLinkUrl: flipbook.logoLinkUrl,
       }}
       initialBackgroundImageUrl={backgroundImageUrl}
+      initialLogoUrl={logoUrl}
     />
   );
 }
