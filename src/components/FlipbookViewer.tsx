@@ -71,7 +71,9 @@ export function FlipbookViewer({
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
   const [pageAspect, setPageAspect] = useState(DEFAULT_PAGE_ASPECT);
   const [wrapperWidth, setWrapperWidth] = useState<number | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const flipBookRef = useRef<{ pageFlip: () => PageFlipController } | null>(null);
 
   useEffect(() => {
@@ -156,6 +158,22 @@ export function FlipbookViewer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    function handleFullscreenChange() {
+      setIsFullscreen(document.fullscreenElement === rootRef.current);
+    }
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      rootRef.current?.requestFullscreen();
+    }
+  }
+
   const pages = useMemo(() => {
     if (!doc) return [];
     return Array.from({ length: pageCount }, (_, i) => i + 1);
@@ -200,6 +218,7 @@ export function FlipbookViewer({
 
   return (
     <div
+      ref={rootRef}
       className="relative flex h-full min-h-0 w-full flex-col items-center gap-2"
       style={{
         backgroundColor: themeColor,
@@ -210,9 +229,33 @@ export function FlipbookViewer({
       }}
     >
       {showToolbar && (
-        <div className="flex w-full max-w-4xl shrink-0 items-center justify-between px-4 pt-3 text-sm text-white/90">
+        <div
+          className="flex w-full shrink-0 items-center justify-between px-4 py-3 text-sm text-white/90"
+          style={{ backgroundColor: themeColor }}
+        >
           <span className="truncate font-medium">{title}</span>
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => flipBookRef.current?.pageFlip()?.flipPrev()}
+                disabled={atFirstPage}
+                aria-label="Previous page"
+                className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20 disabled:opacity-30"
+              >
+                ‹
+              </button>
+              <span className="px-1 tabular-nums text-white/60">
+                {currentPage + 1} / {pageCount}
+              </span>
+              <button
+                onClick={() => flipBookRef.current?.pageFlip()?.flipNext()}
+                disabled={atLastPage}
+                aria-label="Next page"
+                className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20 disabled:opacity-30"
+              >
+                ›
+              </button>
+            </div>
             {allowPrint && (
               <button onClick={handlePrint} className="rounded bg-white/10 px-2 py-1 hover:bg-white/20">
                 Print
@@ -223,6 +266,13 @@ export function FlipbookViewer({
                 Download
               </button>
             )}
+            <button
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              className="rounded bg-white/10 px-2 py-1 hover:bg-white/20"
+            >
+              {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            </button>
           </div>
         </div>
       )}
@@ -287,12 +337,6 @@ export function FlipbookViewer({
         )}
       </div>
 
-      {showToolbar && (
-        <p className="shrink-0 pb-3 text-sm tabular-nums text-white/60">
-          {currentPage + 1} / {pageCount}
-        </p>
-      )}
-
       {logoUrl && (
         <div className="absolute bottom-3 left-3 z-10">
           {logoLinkUrl ? (
@@ -300,7 +344,7 @@ export function FlipbookViewer({
               <Image src={logoUrl} alt="" width={280} height={80} unoptimized className="h-16 w-auto max-w-[220px] object-contain drop-shadow sm:h-20 sm:max-w-[280px]" />
             </a>
           ) : (
-            <Image src={logoUrl} alt="" width={160} height={40} unoptimized className="h-10 w-auto max-w-[160px] object-contain drop-shadow" />
+            <Image src={logoUrl} alt="" width={280} height={80} unoptimized className="h-16 w-auto max-w-[220px] object-contain drop-shadow sm:h-20 sm:max-w-[280px]" />
           )}
         </div>
       )}
