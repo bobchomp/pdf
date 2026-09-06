@@ -261,26 +261,29 @@ export function FlipbookViewer({
               <button
                 onClick={handlePrint}
                 aria-label="Print"
-                className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20"
+                className="flex h-7 items-center gap-1.5 rounded bg-white/10 px-2.5 hover:bg-white/20"
               >
                 <IconPrint size={15} />
+                <span className="hidden sm:inline">Print</span>
               </button>
             )}
             {allowDownload && (
               <button
                 onClick={handleDownload}
                 aria-label="Download"
-                className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20"
+                className="flex h-7 items-center gap-1.5 rounded bg-white/10 px-2.5 hover:bg-white/20"
               >
                 <IconDownload size={15} />
+                <span className="hidden sm:inline">Download</span>
               </button>
             )}
             <button
               onClick={toggleFullscreen}
               aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-              className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20"
+              className="flex h-7 items-center gap-1.5 rounded bg-white/10 px-2.5 hover:bg-white/20"
             >
               <IconFullscreen size={15} />
+              <span className="hidden sm:inline">{isFullscreen ? "Exit full screen" : "Full screen"}</span>
             </button>
           </div>
         </div>
