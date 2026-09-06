@@ -82,9 +82,9 @@ export function FlipbookViewer({
   }
 
   return (
-    <div className="flex h-full w-full flex-col items-center gap-3" style={{ background: themeColor }}>
+    <div className="flex h-full min-h-0 w-full flex-col items-center gap-3" style={{ background: themeColor }}>
       {showToolbar && (
-        <div className="flex w-full max-w-4xl items-center justify-between px-4 pt-3 text-sm text-white/90">
+        <div className="flex w-full max-w-4xl shrink-0 items-center justify-between px-4 pt-3 text-sm text-white/90">
           <span className="truncate font-medium">{title}</span>
           <div className="flex items-center gap-3">
             <span className="tabular-nums text-white/60">
@@ -104,7 +104,7 @@ export function FlipbookViewer({
         </div>
       )}
 
-      <div className="flex flex-1 w-full items-center justify-center overflow-hidden px-2 pb-4">
+      <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-2 pb-4">
         <HTMLFlipBook
           key={pageCount}
           ref={flipBookRef}
@@ -112,9 +112,9 @@ export function FlipbookViewer({
           height={700}
           size="stretch"
           minWidth={280}
-          maxWidth={900}
+          maxWidth={1400}
           minHeight={400}
-          maxHeight={1200}
+          maxHeight={1800}
           maxShadowOpacity={0.4}
           showCover={true}
           mobileScrollSupport={true}

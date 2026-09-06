@@ -129,7 +129,7 @@ export function PublicFlipbook({ slug, embed = false }: { slug: string; embed?: 
   }
 
   return (
-    <div className="h-full min-h-screen">
+    <div className="h-dvh w-full overflow-hidden">
       <FlipbookViewer
         pdfUrl={pdfUrl}
         pageCount={flipbook.pageCount}
