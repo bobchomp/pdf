@@ -180,16 +180,9 @@ export function FlipbookViewer({
   }, [doc, pageCount]);
 
   const shift = orientation === "landscape" ? coverShiftDirection(currentPage, pageCount) : null;
-  // The book itself always renders at full (two-page) width so react-pageflip's own sizing
-  // math stays correct; a lone cover/back-cover page is centered by clipping an outer window
-  // down to single-page width and, for a front cover (whose content sits in the right half),
-  // sliding the book left by exactly half its own width so that half fills the window. A back
-  // cover's content already starts at the left edge, so it needs no slide — just the clip.
-  const clipToSinglePage = shift !== null;
-  const bookSlideStyle: React.CSSProperties = {
-    width: wrapperWidth ?? undefined,
+  const flipBookStyle: React.CSSProperties = {
     transition: "transform 300ms ease",
-    transform: shift === "left" ? "translateX(-50%) translateZ(0)" : "translateZ(0)",
+    transform: shift === "left" ? "translateX(-25%) translateZ(0)" : shift === "right" ? "translateX(25%) translateZ(0)" : "translateZ(0)",
   };
 
   function handleDownload() {
@@ -303,44 +296,43 @@ export function FlipbookViewer({
         </button>
 
         {wrapperWidth && (
-          <div style={{ width: clipToSinglePage ? wrapperWidth / 2 : wrapperWidth, maxWidth: "100%", overflow: "hidden" }}>
-            <div style={bookSlideStyle}>
-              <HTMLFlipBook
-                key={pageCount}
-                ref={flipBookRef}
-                width={600}
-                height={Math.round(600 / pageAspect)}
-                size="stretch"
-                minWidth={200}
-                maxWidth={2200}
-                minHeight={280}
-                maxHeight={3000}
-                maxShadowOpacity={0.4}
-                showCover={true}
-                mobileScrollSupport={true}
-                className="shadow-2xl"
-                startPage={0}
-                drawShadow={true}
-                flippingTime={500}
-                usePortrait={true}
-                startZIndex={0}
-                autoSize={true}
-                clickEventForward={true}
-                useMouseEvents={true}
-                swipeDistance={30}
-                showPageCorners={true}
-                disableFlipByClick={false}
-                onFlip={(e: { data: number }) => setCurrentPage(e.data)}
-                onInit={(e: { data: { mode: "portrait" | "landscape" } }) => setOrientation(e.data.mode)}
-                onChangeOrientation={(e: { data: "portrait" | "landscape" }) => setOrientation(e.data)}
-              >
-                {pages.map((pageNumber) => (
-                  <div key={pageNumber} className="bg-white">
-                    <PdfPage doc={doc} pageNumber={pageNumber} shouldRender={Math.abs(pageNumber - 1 - currentPage) <= RENDER_WINDOW} />
-                  </div>
-                ))}
-              </HTMLFlipBook>
-            </div>
+          <div style={{ width: wrapperWidth, maxWidth: "100%" }}>
+            <HTMLFlipBook
+              key={pageCount}
+              ref={flipBookRef}
+              width={600}
+              height={Math.round(600 / pageAspect)}
+              size="stretch"
+              minWidth={200}
+              maxWidth={2200}
+              minHeight={280}
+              maxHeight={3000}
+              maxShadowOpacity={0.4}
+              showCover={true}
+              mobileScrollSupport={true}
+              className="shadow-2xl"
+              style={flipBookStyle}
+              startPage={0}
+              drawShadow={true}
+              flippingTime={500}
+              usePortrait={true}
+              startZIndex={0}
+              autoSize={true}
+              clickEventForward={true}
+              useMouseEvents={true}
+              swipeDistance={30}
+              showPageCorners={true}
+              disableFlipByClick={false}
+              onFlip={(e: { data: number }) => setCurrentPage(e.data)}
+              onInit={(e: { data: { mode: "portrait" | "landscape" } }) => setOrientation(e.data.mode)}
+              onChangeOrientation={(e: { data: "portrait" | "landscape" }) => setOrientation(e.data)}
+            >
+              {pages.map((pageNumber) => (
+                <div key={pageNumber} className="bg-white">
+                  <PdfPage doc={doc} pageNumber={pageNumber} shouldRender={Math.abs(pageNumber - 1 - currentPage) <= RENDER_WINDOW} />
+                </div>
+              ))}
+            </HTMLFlipBook>
           </div>
         )}
       </div>
