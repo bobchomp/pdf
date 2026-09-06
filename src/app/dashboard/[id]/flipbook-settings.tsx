@@ -22,6 +22,8 @@ type Stats = { totalViews: number; last30Days: { date: string; count: number }[]
 export function FlipbookSettings({ flipbook: initial }: { flipbook: Flipbook }) {
   const router = useRouter();
   const [flipbook, setFlipbook] = useState(initial);
+  const [titleDraft, setTitleDraft] = useState(initial.title);
+  const [descriptionDraft, setDescriptionDraft] = useState(initial.description);
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -95,6 +97,38 @@ export function FlipbookSettings({ flipbook: initial }: { flipbook: Flipbook }) 
       </div>
 
       {message && <p className="text-sm text-emerald-600">{message}</p>}
+
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-semibold text-slate-800">Details</h2>
+        <div className="mt-3 space-y-3">
+          <div>
+            <label className="text-xs font-medium text-slate-500">Title</label>
+            <input
+              type="text"
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-slate-500">Description</label>
+            <textarea
+              value={descriptionDraft}
+              onChange={(e) => setDescriptionDraft(e.target.value)}
+              rows={3}
+              placeholder="Optional — shown to visitors before they open the flipbook"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <button
+            onClick={() => patch({ title: titleDraft, description: descriptionDraft })}
+            disabled={saving || (titleDraft === flipbook.title && descriptionDraft === flipbook.description) || !titleDraft.trim()}
+            className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            Save details
+          </button>
+        </div>
+      </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-800">Share</h2>

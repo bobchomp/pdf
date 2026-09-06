@@ -101,6 +101,7 @@ export function PublicFlipbook({ slug, embed = false }: { slug: string; embed?: 
       <div className="flex h-full min-h-screen items-center justify-center bg-slate-900 px-4">
         <form onSubmit={handleUnlock} className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
           <h1 className="text-lg font-semibold text-slate-900">{flipbook.title}</h1>
+          {flipbook.description && <p className="mt-1 text-sm text-slate-600">{flipbook.description}</p>}
           <p className="mt-1 text-sm text-slate-500">This flipbook is password protected.</p>
           <input
             type="password"
