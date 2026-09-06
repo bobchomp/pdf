@@ -3,8 +3,15 @@ import { z } from "zod";
 import { createUser, listUsers } from "@/lib/users";
 
 export async function GET() {
-  const users = await listUsers();
-  return Response.json({ needsSetup: users.length === 0 });
+  try {
+    const users = await listUsers();
+    return Response.json({ needsSetup: users.length === 0 });
+  } catch (err) {
+    return Response.json(
+      { error: err instanceof Error ? err.message : "Failed to reach the database." },
+      { status: 500 }
+    );
+  }
 }
 
 const schema = z.object({
@@ -14,7 +21,16 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const users = await listUsers();
+  let users;
+  try {
+    users = await listUsers();
+  } catch (err) {
+    return Response.json(
+      { error: err instanceof Error ? err.message : "Failed to reach the database." },
+      { status: 500 }
+    );
+  }
+
   if (users.length > 0) {
     return Response.json({ error: "Setup has already been completed. Sign in at /login instead." }, { status: 403 });
   }
