@@ -124,6 +124,27 @@ export function FlipbookViewer({
     flipBookRef.current?.pageFlip()?.update();
   }, [wrapperWidth]);
 
+  // Left/right arrow keys flip pages, unless the user is typing somewhere (e.g. the password
+  // form on a private flipbook, or — for an embed — some other field on the host page).
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
+
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        flipBookRef.current?.pageFlip()?.flipPrev();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        flipBookRef.current?.pageFlip()?.flipNext();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const pages = useMemo(() => {
     if (!doc) return [];
     return Array.from({ length: pageCount }, (_, i) => i + 1);
