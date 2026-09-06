@@ -1,5 +1,5 @@
 import "server-only";
-import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, CopyObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
@@ -51,6 +51,21 @@ export async function deleteObject(key: string) {
   await r2Client().send(new DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key }));
 }
 
+/** Duplicates an object under a new key so the copy can be deleted independently of the original. */
+export async function copyObject(sourceKey: string, destKey: string) {
+  await r2Client().send(
+    new CopyObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: destKey,
+      CopySource: `${R2_BUCKET_NAME}/${sourceKey.split("/").map(encodeURIComponent).join("/")}`,
+    })
+  );
+}
+
+export function keyFilename(key: string) {
+  return key.split("/").pop() ?? key;
+}
+
 export function flipbookPdfKey(flipbookId: string, filename: string) {
   return `flipbooks/${flipbookId}/original/${filename}`;
 }
@@ -65,4 +80,12 @@ export function flipbookBackgroundKey(flipbookId: string, filename: string) {
 
 export function flipbookLogoKey(flipbookId: string, filename: string) {
   return `flipbooks/${flipbookId}/logo/${filename}`;
+}
+
+export function presetBackgroundKey(presetId: string, filename: string) {
+  return `presets/${presetId}/background/${filename}`;
+}
+
+export function presetLogoKey(presetId: string, filename: string) {
+  return `presets/${presetId}/logo/${filename}`;
 }

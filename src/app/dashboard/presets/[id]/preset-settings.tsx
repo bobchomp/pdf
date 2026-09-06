@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import { BACKGROUND_POSITIONS } from "@/lib/background-position";
 import { Switch } from "@/components/Switch";
@@ -15,13 +14,10 @@ const outlineButtonClass =
 const primaryButtonClass =
   "rounded-[9px] bg-navy-900 px-5 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:bg-navy-700 disabled:opacity-50";
 
-type Flipbook = {
+type Preset = {
   id: string;
-  slug: string;
-  title: string;
-  description: string;
-  status: string;
-  pageCount: number;
+  name: string;
+  isDefault: boolean;
   isPrivate: boolean;
   allowDownload: boolean;
   allowPrint: boolean;
@@ -32,89 +28,43 @@ type Flipbook = {
   backgroundPosition: string;
   logoR2Key: string | null;
   logoLinkUrl: string | null;
-  presetId: string | null;
 };
 
-type Stats = { totalViews: number; last30Days: { date: string; count: number }[] };
 type ImageField = "backgroundImageR2Key" | "logoR2Key";
-type PresetSummary = { id: string; name: string; isDefault: boolean };
 
-export function FlipbookSettings({
-  flipbook: initial,
+export function PresetSettings({
+  preset: initial,
   initialBackgroundImageUrl,
   initialLogoUrl,
 }: {
-  flipbook: Flipbook;
+  preset: Preset;
   initialBackgroundImageUrl: string | null;
   initialLogoUrl: string | null;
 }) {
   const router = useRouter();
-  const [flipbook, setFlipbook] = useState(initial);
-  const [titleDraft, setTitleDraft] = useState(initial.title);
-  const [descriptionDraft, setDescriptionDraft] = useState(initial.description);
+  const [preset, setPreset] = useState(initial);
+  const [nameDraft, setNameDraft] = useState(initial.name);
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [stats, setStats] = useState<Stats | null>(null);
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(initialBackgroundImageUrl);
   const [uploadingBackground, setUploadingBackground] = useState(false);
   const [logoUrl, setLogoUrl] = useState(initialLogoUrl);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoLinkDraft, setLogoLinkDraft] = useState(initial.logoLinkUrl ?? "");
-  const [origin] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
-  const [presets, setPresets] = useState<PresetSummary[] | null>(null);
-  const [applyingPreset, setApplyingPreset] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/flipbooks/${flipbook.id}/stats`)
-      .then((r) => r.json())
-      .then((d) => setStats(d.stats));
-  }, [flipbook.id]);
-
-  useEffect(() => {
-    fetch("/api/presets")
-      .then((r) => r.json())
-      .then((d) => setPresets(d.presets.map((p: { id: string; name: string; isDefault: boolean }) => ({ id: p.id, name: p.name, isDefault: p.isDefault }))));
-  }, []);
-
-  async function applyPreset(presetId: string) {
-    setApplyingPreset(true);
-    setMessage(null);
-    try {
-      const res = await fetch(`/api/flipbooks/${flipbook.id}/apply-preset`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presetId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to apply preset.");
-      setFlipbook((prev) => ({ ...prev, ...data.flipbook }));
-      setBackgroundImageUrl(data.backgroundImageUrl);
-      setLogoUrl(data.logoUrl);
-      setLogoLinkDraft(data.flipbook.logoLinkUrl ?? "");
-      setMessage("Preset applied.");
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Failed to apply preset.");
-    } finally {
-      setApplyingPreset(false);
-    }
-  }
-
-  const publicUrl = `${origin}/f/${flipbook.slug}`;
-  const embedCode = `<iframe src="${origin}/embed/${flipbook.slug}" width="100%" height="700" style="border:0;" allowfullscreen></iframe>`;
 
   async function patch(body: Record<string, unknown>) {
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch(`/api/flipbooks/${flipbook.id}`, {
+      const res = await fetch(`/api/presets/${preset.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const data = await res.json();
       if (res.ok) {
-        setFlipbook((prev) => ({ ...prev, ...data.flipbook }));
+        setPreset((prev) => ({ ...prev, ...data.preset }));
         setMessage("Saved.");
       } else {
         setMessage(data.error?.formErrors?.[0] ?? data.error ?? "Failed to save.");
@@ -125,14 +75,9 @@ export function FlipbookSettings({
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete "${flipbook.title}"? This cannot be undone.`)) return;
-    const res = await fetch(`/api/flipbooks/${flipbook.id}`, { method: "DELETE" });
-    if (res.ok) router.push("/dashboard");
-  }
-
-  function copy(text: string) {
-    navigator.clipboard.writeText(text);
-    setMessage("Copied to clipboard.");
+    if (!confirm(`Delete the "${preset.name}" preset? This cannot be undone.`)) return;
+    const res = await fetch(`/api/presets/${preset.id}`, { method: "DELETE" });
+    if (res.ok) router.push("/dashboard/presets");
   }
 
   async function uploadImage(
@@ -156,7 +101,7 @@ export function FlipbookSettings({
       const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type || "image/jpeg" }, body: file });
       if (!putRes.ok) throw new Error(`Failed to upload ${label}.`);
 
-      const res = await fetch(`/api/flipbooks/${flipbook.id}`, {
+      const res = await fetch(`/api/presets/${preset.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [field]: key }),
@@ -164,7 +109,7 @@ export function FlipbookSettings({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `Failed to save ${label}.`);
 
-      setFlipbook((prev) => ({ ...prev, ...data.flipbook }));
+      setPreset((prev) => ({ ...prev, ...data.preset }));
       setPreviewUrl(URL.createObjectURL(file));
       setMessage(`${label} updated.`);
     } catch (err) {
@@ -178,14 +123,14 @@ export function FlipbookSettings({
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch(`/api/flipbooks/${flipbook.id}`, {
+      const res = await fetch(`/api/presets/${preset.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [field]: null }),
       });
       const data = await res.json();
       if (res.ok) {
-        setFlipbook((prev) => ({ ...prev, ...data.flipbook }));
+        setPreset((prev) => ({ ...prev, ...data.preset }));
         setPreviewUrl(null);
         setMessage(`${label} removed.`);
       } else {
@@ -203,135 +148,62 @@ export function FlipbookSettings({
     patch({ logoLinkUrl: normalized || null });
   }
 
-  const maxCount = Math.max(1, ...(stats?.last30Days.map((d) => d.count) ?? [1]));
-
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[26px] font-bold tracking-tight text-navy-900">{flipbook.title}</h1>
-          <p className="mt-1 text-[13.5px] text-gray-400">
-            {flipbook.status} · {flipbook.pageCount} pages
-          </p>
+          <h1 className="text-[26px] font-bold tracking-tight text-navy-900">{preset.name}</h1>
+          {preset.isDefault && <p className="mt-1 text-[13.5px] text-gray-400">Default preset for new newsletters</p>}
         </div>
-        <div className="flex gap-2.5">
-          <a href={`/f/${flipbook.slug}`} target="_blank" className={outlineButtonClass}>
-            View
-          </a>
-          <button
-            onClick={handleDelete}
-            className="rounded-[9px] border border-red-200 px-4 py-2.5 text-[13.5px] font-semibold text-red-600 transition-colors hover:bg-red-50"
-          >
-            Delete
-          </button>
-        </div>
+        <button
+          onClick={handleDelete}
+          className="rounded-[9px] border border-red-200 px-4 py-2.5 text-[13.5px] font-semibold text-red-600 transition-colors hover:bg-red-50"
+        >
+          Delete
+        </button>
       </div>
 
       {message && <p className="text-sm font-medium text-green-600">{message}</p>}
 
       <section className="rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]">
-        <h2 className="text-[15px] font-semibold text-navy-900">Details</h2>
+        <h2 className="text-[15px] font-semibold text-navy-900">General</h2>
         <div className="mt-4 space-y-3.5">
           <div>
-            <label className="text-[12.5px] font-semibold text-gray-400">Title</label>
+            <label className="text-[12.5px] font-semibold text-gray-400">Name</label>
             <input
               type="text"
-              value={titleDraft}
-              onChange={(e) => setTitleDraft(e.target.value)}
-              className={`mt-1.5 w-full ${inputClass}`}
-            />
-          </div>
-          <div>
-            <label className="text-[12.5px] font-semibold text-gray-400">Description</label>
-            <textarea
-              value={descriptionDraft}
-              onChange={(e) => setDescriptionDraft(e.target.value)}
-              rows={3}
-              placeholder="Optional — shown to visitors before they open the flipbook"
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
               className={`mt-1.5 w-full ${inputClass}`}
             />
           </div>
           <button
-            onClick={() => patch({ title: titleDraft, description: descriptionDraft })}
-            disabled={saving || (titleDraft === flipbook.title && descriptionDraft === flipbook.description) || !titleDraft.trim()}
+            onClick={() => patch({ name: nameDraft })}
+            disabled={saving || nameDraft === preset.name || !nameDraft.trim()}
             className={primaryButtonClass}
           >
-            Save details
+            Save name
           </button>
-        </div>
-      </section>
 
-      <section className="rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]">
-        <h2 className="text-[15px] font-semibold text-navy-900">Share</h2>
-        <div className="mt-4 space-y-4">
-          <div>
-            <label className="text-[12.5px] font-semibold text-gray-400">Public link</label>
-            <div className="mt-1.5 flex gap-2">
-              <input readOnly value={publicUrl} className={`w-full bg-gray-50 ${inputClass}`} />
-              <button onClick={() => copy(publicUrl)} className={outlineButtonClass}>
-                Copy
-              </button>
+          <div className="h-px bg-gray-100" />
+
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm text-gray-900">Set as default</span>
+              <p className="text-xs text-gray-400">New newsletters automatically start with this preset.</p>
             </div>
-          </div>
-          <div>
-            <label className="text-[12.5px] font-semibold text-gray-400">Embed on your website</label>
-            <div className="mt-1.5 flex gap-2">
-              <textarea readOnly value={embedCode} rows={2} className={`w-full bg-gray-50 font-mono text-xs ${inputClass}`} />
-              <button onClick={() => copy(embedCode)} className={`h-fit ${outlineButtonClass}`}>
-                Copy
-              </button>
-            </div>
-            {flipbook.isPrivate && (
-              <p className="mt-2 text-xs leading-relaxed text-amber-600">
-                Note: password-protected flipbooks may prompt for the password again inside the embed on some browsers due to
-                third-party cookie restrictions.
-              </p>
-            )}
+            <Switch checked={preset.isDefault} onChange={(v) => patch({ isDefault: v })} label="Set as default" disabled={preset.isDefault} />
           </div>
         </div>
-      </section>
-
-      <section className="rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-navy-900">Preset</h2>
-          <Link href="/dashboard/presets" className="text-[13px] font-semibold text-blue-600 hover:text-navy-700">
-            Manage presets
-          </Link>
-        </div>
-        <p className="mt-1 text-xs text-gray-400">
-          Apply a preset to instantly set privacy, controls, and branding below. You can still make one-off changes afterward.
-        </p>
-        <select
-          value={flipbook.presetId ?? ""}
-          onChange={(e) => e.target.value && applyPreset(e.target.value)}
-          disabled={applyingPreset || !presets}
-          className={`mt-4 w-full ${inputClass}`}
-        >
-          <option value="" disabled={!!flipbook.presetId}>
-            {presets === null ? "Loading presets…" : "Custom (no preset applied)"}
-          </option>
-          {presets?.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-              {p.isDefault ? " (Default)" : ""}
-            </option>
-          ))}
-        </select>
-        {presets?.length === 0 && (
-          <p className="mt-2 text-xs text-gray-400">
-            No presets yet.{" "}
-            <Link href="/dashboard/presets/new" className="font-semibold text-blue-600 hover:text-navy-700">
-              Create one
-            </Link>{" "}
-            to reuse settings across newsletters.
-          </p>
-        )}
       </section>
 
       <section className="rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]">
         <h2 className="text-[15px] font-semibold text-navy-900">Privacy</h2>
+        <p className="mt-1 text-xs text-gray-400">
+          Newsletters that use this preset will require this password. You can still remove or change it per newsletter afterward.
+        </p>
         <div className="mt-4 space-y-3">
-          {flipbook.isPrivate ? (
+          {preset.isPrivate ? (
             <div className="flex items-center justify-between rounded-[9px] bg-gray-50 px-4 py-3 text-sm">
               <span className="flex items-center gap-2 font-medium text-gray-900">
                 <IconLock size={13} className="text-gray-600" />
@@ -367,15 +239,15 @@ export function FlipbookSettings({
         <div className="mt-4 space-y-4 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-gray-900">Allow visitors to download the PDF</span>
-            <Switch checked={flipbook.allowDownload} onChange={(v) => patch({ allowDownload: v })} label="Allow download" />
+            <Switch checked={preset.allowDownload} onChange={(v) => patch({ allowDownload: v })} label="Allow download" />
           </div>
           <div className="flex items-center justify-between">
             <span className="text-gray-900">Allow visitors to print</span>
-            <Switch checked={flipbook.allowPrint} onChange={(v) => patch({ allowPrint: v })} label="Allow print" />
+            <Switch checked={preset.allowPrint} onChange={(v) => patch({ allowPrint: v })} label="Allow print" />
           </div>
           <div className="flex items-center justify-between">
             <span className="text-gray-900">Show toolbar (title, page count, buttons)</span>
-            <Switch checked={flipbook.showToolbar} onChange={(v) => patch({ showToolbar: v })} label="Show toolbar" />
+            <Switch checked={preset.showToolbar} onChange={(v) => patch({ showToolbar: v })} label="Show toolbar" />
           </div>
 
           <div className="h-px bg-gray-100" />
@@ -384,7 +256,7 @@ export function FlipbookSettings({
             <span className="text-gray-900">Background color</span>
             <input
               type="color"
-              value={flipbook.themeColor}
+              value={preset.themeColor}
               onChange={(e) => patch({ themeColor: e.target.value })}
               className="h-8 w-11 cursor-pointer rounded-[8px] border border-gray-200"
             />
@@ -413,7 +285,7 @@ export function FlipbookSettings({
                       uploadImage(
                         file,
                         "backgroundImageR2Key",
-                        `/api/flipbooks/${flipbook.id}/background-upload-url`,
+                        `/api/presets/${preset.id}/background-upload-url`,
                         setBackgroundImageUrl,
                         setUploadingBackground,
                         "Background image"
@@ -447,21 +319,21 @@ export function FlipbookSettings({
                   <button
                     onClick={() => patch({ backgroundFit: "contain" })}
                     disabled={saving}
-                    className={`px-3.5 py-1.5 font-semibold ${flipbook.backgroundFit === "contain" ? "bg-navy-900 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                    className={`px-3.5 py-1.5 font-semibold ${preset.backgroundFit === "contain" ? "bg-navy-900 text-white" : "text-gray-700 hover:bg-gray-50"}`}
                   >
                     Fit whole image
                   </button>
                   <button
                     onClick={() => patch({ backgroundFit: "cover" })}
                     disabled={saving}
-                    className={`border-l border-gray-300 px-3.5 py-1.5 font-semibold ${flipbook.backgroundFit === "cover" ? "bg-navy-900 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+                    className={`border-l border-gray-300 px-3.5 py-1.5 font-semibold ${preset.backgroundFit === "cover" ? "bg-navy-900 text-white" : "text-gray-700 hover:bg-gray-50"}`}
                   >
                     Fill &amp; crop
                   </button>
                 </div>
               </div>
 
-              {flipbook.backgroundFit === "cover" && (
+              {preset.backgroundFit === "cover" && (
                 <div className="flex items-center justify-between">
                   <span className="text-gray-900">Crop from</span>
                   <div className="grid grid-cols-3 gap-1 rounded-[8px] border border-gray-300 p-1">
@@ -472,7 +344,7 @@ export function FlipbookSettings({
                         disabled={saving}
                         aria-label={pos}
                         className={`flex h-7 w-7 items-center justify-center rounded-[5px] transition-colors ${
-                          flipbook.backgroundPosition === pos ? "bg-navy-900 text-white" : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                          preset.backgroundPosition === pos ? "bg-navy-900 text-white" : "bg-gray-100 text-gray-400 hover:bg-gray-200"
                         }`}
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-current" />
@@ -509,7 +381,7 @@ export function FlipbookSettings({
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      uploadImage(file, "logoR2Key", `/api/flipbooks/${flipbook.id}/logo-upload-url`, setLogoUrl, setUploadingLogo, "Logo");
+                      uploadImage(file, "logoR2Key", `/api/presets/${preset.id}/logo-upload-url`, setLogoUrl, setUploadingLogo, "Logo");
                     }
                     e.target.value = "";
                   }}
@@ -540,7 +412,7 @@ export function FlipbookSettings({
               />
               <button
                 onClick={saveLogoLink}
-                disabled={saving || logoLinkDraft.trim() === (flipbook.logoLinkUrl ?? "")}
+                disabled={saving || logoLinkDraft.trim() === (preset.logoLinkUrl ?? "")}
                 className={outlineButtonClass}
               >
                 Save
@@ -549,32 +421,6 @@ export function FlipbookSettings({
             {!logoUrl && logoLinkDraft && <p className="mt-1.5 text-xs text-amber-600">Upload a logo above for this link to have anywhere to go.</p>}
           </div>
         </div>
-      </section>
-
-      <section className="rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]">
-        <h2 className="text-[15px] font-semibold text-navy-900">Analytics</h2>
-        {stats ? (
-          <div className="mt-4">
-            <p className="text-[30px] font-bold text-navy-900">{stats.totalViews}</p>
-            <p className="text-xs text-gray-400">total views</p>
-            <div className="mt-5 flex h-24 items-end gap-1">
-              {stats.last30Days.length === 0 ? (
-                <p className="text-xs text-gray-300">No views in the last 30 days.</p>
-              ) : (
-                stats.last30Days.map((d) => (
-                  <div
-                    key={d.date}
-                    title={`${d.date}: ${d.count}`}
-                    className="flex-1 rounded-t-[3px] bg-blue-100"
-                    style={{ height: `${(d.count / maxCount) * 100}%`, minHeight: 2 }}
-                  />
-                ))
-              )}
-            </div>
-          </div>
-        ) : (
-          <p className="mt-2 text-sm text-gray-400">Loading…</p>
-        )}
       </section>
     </div>
   );

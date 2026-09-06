@@ -4,6 +4,7 @@ import { and, desc, eq, gte } from "drizzle-orm";
 import { db, schema } from "@/db/client";
 import { newId, newSlug } from "@/lib/ids";
 import { deleteObject } from "@/lib/r2";
+import { applyPresetToFlipbook, getDefaultPreset } from "@/lib/presets";
 
 export async function listFlipbooks() {
   return db.select().from(schema.flipbooks).orderBy(desc(schema.flipbooks.createdAt));
@@ -39,6 +40,12 @@ export async function createDraftFlipbook(input: {
     createdAt: now,
     updatedAt: now,
   });
+
+  const defaultPreset = await getDefaultPreset();
+  if (defaultPreset) {
+    await applyPresetToFlipbook(id, defaultPreset.id);
+  }
+
   return getFlipbookById(id);
 }
 
@@ -56,6 +63,7 @@ export type FlipbookSettingsPatch = Partial<{
   backgroundPosition: string;
   logoR2Key: string | null;
   logoLinkUrl: string | null;
+  presetId: string | null;
   pageCount: number;
   fileSizeBytes: number;
   status: "processing" | "ready" | "error";
@@ -73,7 +81,7 @@ export async function setFlipbookPassword(id: string, password: string | null) {
   const passwordHash = password ? await bcrypt.hash(password, 12) : null;
   await db
     .update(schema.flipbooks)
-    .set({ passwordHash, isPrivate: !!password, updatedAt: new Date() })
+    .set({ passwordHash, isPrivate: !!password, presetId: null, updatedAt: new Date() })
     .where(eq(schema.flipbooks.id, id));
   return getFlipbookById(id);
 }

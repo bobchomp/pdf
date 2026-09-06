@@ -32,6 +32,7 @@ export default async function FlipbookDetailPage({ params }: { params: Promise<{
         backgroundPosition: flipbook.backgroundPosition,
         logoR2Key: flipbook.logoR2Key,
         logoLinkUrl: flipbook.logoLinkUrl,
+        presetId: flipbook.presetId,
       }}
       initialBackgroundImageUrl={backgroundImageUrl}
       initialLogoUrl={logoUrl}
