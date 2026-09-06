@@ -11,6 +11,13 @@ const HTMLFlipBook = dynamic(() => import("react-pageflip"), { ssr: false }) as 
 >;
 
 const RENDER_WINDOW = 3;
+const DEFAULT_PAGE_ASPECT = 500 / 700; // width/height fallback, used only until the PDF tells us its real one
+
+type PageFlipController = {
+  flipNext: () => void;
+  flipPrev: () => void;
+  update: () => void;
+};
 
 /**
  * react-pageflip (showCover=true) always reserves a two-page-wide box, centered in its
@@ -51,7 +58,10 @@ export function FlipbookViewer({
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
-  const flipBookRef = useRef<{ pageFlip: () => { flipNext: () => void; flipPrev: () => void } } | null>(null);
+  const [pageAspect, setPageAspect] = useState(DEFAULT_PAGE_ASPECT);
+  const [wrapperWidth, setWrapperWidth] = useState<number | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const flipBookRef = useRef<{ pageFlip: () => PageFlipController } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +76,53 @@ export function FlipbookViewer({
       cancelled = true;
     };
   }, [pdfUrl]);
+
+  // Read the PDF's real page proportions so the book isn't forced into an arbitrary 5:7 box.
+  useEffect(() => {
+    if (!doc) return;
+    let cancelled = false;
+    doc
+      .getPage(1)
+      .then((page) => {
+        if (cancelled) return;
+        const viewport = page.getViewport({ scale: 1 });
+        if (viewport.width > 0 && viewport.height > 0) setPageAspect(viewport.width / viewport.height);
+      })
+      .catch(() => {
+        // keep the fallback aspect ratio
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [doc]);
+
+  // react-pageflip derives page HEIGHT from width times a fixed ratio — it never checks that
+  // against the real available height. So we constrain the WIDTH we give it ourselves,
+  // accounting for both dimensions, and let its own math do the rest correctly from there.
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+
+    function recompute() {
+      const availW = el!.clientWidth;
+      const availH = el!.clientHeight;
+      if (availW <= 0 || availH <= 0) return;
+      // Assumes a two-page landscape spread (the common case); on narrow screens the library
+      // falls back to single-page portrait mode on its own once the width is small enough.
+      const widthLimitedByHeight = availH * pageAspect * 2;
+      setWrapperWidth(Math.max(1, Math.min(availW, widthLimitedByHeight)));
+    }
+
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [pageAspect]);
+
+  // Once we've resized the box the book lives in, ask it to recalculate against the new size.
+  useEffect(() => {
+    flipBookRef.current?.pageFlip()?.update();
+  }, [wrapperWidth]);
 
   const pages = useMemo(() => {
     if (!doc) return [];
@@ -90,6 +147,9 @@ export function FlipbookViewer({
     win?.addEventListener("load", () => win.print());
   }
 
+  const atFirstPage = currentPage === 0;
+  const atLastPage = currentPage >= pageCount - 1;
+
   if (error) {
     return (
       <div className="flex h-full min-h-[400px] items-center justify-center text-center text-sm text-red-500">
@@ -107,14 +167,11 @@ export function FlipbookViewer({
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col items-center gap-3" style={{ background: themeColor }}>
+    <div className="flex h-full min-h-0 w-full flex-col items-center gap-2" style={{ background: themeColor }}>
       {showToolbar && (
         <div className="flex w-full max-w-4xl shrink-0 items-center justify-between px-4 pt-3 text-sm text-white/90">
           <span className="truncate font-medium">{title}</span>
           <div className="flex items-center gap-3">
-            <span className="tabular-nums text-white/60">
-              {currentPage + 1} / {pageCount}
-            </span>
             {allowPrint && (
               <button onClick={handlePrint} className="rounded bg-white/10 px-2 py-1 hover:bg-white/20">
                 Print
@@ -129,44 +186,71 @@ export function FlipbookViewer({
         </div>
       )}
 
-      <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-2 pb-4">
-        <HTMLFlipBook
-          key={pageCount}
-          ref={flipBookRef}
-          width={500}
-          height={700}
-          size="stretch"
-          minWidth={280}
-          maxWidth={1400}
-          minHeight={400}
-          maxHeight={1800}
-          maxShadowOpacity={0.4}
-          showCover={true}
-          mobileScrollSupport={true}
-          className="shadow-2xl"
-          style={flipBookStyle}
-          startPage={0}
-          drawShadow={true}
-          flippingTime={500}
-          usePortrait={true}
-          startZIndex={0}
-          autoSize={true}
-          clickEventForward={true}
-          useMouseEvents={true}
-          swipeDistance={30}
-          showPageCorners={true}
-          disableFlipByClick={false}
-          onFlip={(e: { data: number }) => setCurrentPage(e.data)}
-          onInit={(e: { data: { mode: "portrait" | "landscape" } }) => setOrientation(e.data.mode)}
-          onChangeOrientation={(e: { data: "portrait" | "landscape" }) => setOrientation(e.data)}
+      <div ref={stageRef} className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-6 py-6 sm:px-12 sm:py-10">
+        <button
+          onClick={() => flipBookRef.current?.pageFlip()?.flipPrev()}
+          disabled={atFirstPage}
+          aria-label="Previous page"
+          className="absolute left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-0 sm:left-4"
         >
-          {pages.map((pageNumber) => (
-            <div key={pageNumber} className="bg-white">
-              <PdfPage doc={doc} pageNumber={pageNumber} shouldRender={Math.abs(pageNumber - 1 - currentPage) <= RENDER_WINDOW} />
-            </div>
-          ))}
-        </HTMLFlipBook>
+          ‹
+        </button>
+        <button
+          onClick={() => flipBookRef.current?.pageFlip()?.flipNext()}
+          disabled={atLastPage}
+          aria-label="Next page"
+          className="absolute right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-0 sm:right-4"
+        >
+          ›
+        </button>
+
+        {wrapperWidth && (
+          <div style={{ width: wrapperWidth, maxWidth: "100%" }}>
+            <HTMLFlipBook
+              key={pageCount}
+              ref={flipBookRef}
+              width={600}
+              height={Math.round(600 / pageAspect)}
+              size="stretch"
+              minWidth={200}
+              maxWidth={2200}
+              minHeight={280}
+              maxHeight={3000}
+              maxShadowOpacity={0.4}
+              showCover={true}
+              mobileScrollSupport={true}
+              className="shadow-2xl"
+              style={flipBookStyle}
+              startPage={0}
+              drawShadow={true}
+              flippingTime={500}
+              usePortrait={true}
+              startZIndex={0}
+              autoSize={true}
+              clickEventForward={true}
+              useMouseEvents={true}
+              swipeDistance={30}
+              showPageCorners={true}
+              disableFlipByClick={false}
+              onFlip={(e: { data: number }) => setCurrentPage(e.data)}
+              onInit={(e: { data: { mode: "portrait" | "landscape" } }) => setOrientation(e.data.mode)}
+              onChangeOrientation={(e: { data: "portrait" | "landscape" }) => setOrientation(e.data)}
+            >
+              {pages.map((pageNumber) => (
+                <div key={pageNumber} className="bg-white">
+                  <PdfPage doc={doc} pageNumber={pageNumber} shouldRender={Math.abs(pageNumber - 1 - currentPage) <= RENDER_WINDOW} />
+                </div>
+              ))}
+            </HTMLFlipBook>
+          </div>
+        )}
       </div>
+
+      {showToolbar && (
+        <p className="shrink-0 pb-3 text-sm tabular-nums text-white/60">
+          {currentPage + 1} / {pageCount}
+        </p>
+      )}
     </div>
   );
 }
