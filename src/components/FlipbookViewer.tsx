@@ -297,7 +297,7 @@ export function FlipbookViewer({
         <div className="absolute bottom-3 left-3 z-10">
           {logoLinkUrl ? (
             <a href={logoLinkUrl} target="_blank" rel="noopener noreferrer">
-              <Image src={logoUrl} alt="" width={160} height={40} unoptimized className="h-10 w-auto max-w-[160px] object-contain drop-shadow" />
+              <Image src={logoUrl} alt="" width={280} height={80} unoptimized className="h-16 w-auto max-w-[220px] object-contain drop-shadow sm:h-20 sm:max-w-[280px]" />
             </a>
           ) : (
             <Image src={logoUrl} alt="" width={160} height={40} unoptimized className="h-10 w-auto max-w-[160px] object-contain drop-shadow" />
