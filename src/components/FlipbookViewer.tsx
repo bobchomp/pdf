@@ -200,7 +200,7 @@ export function FlipbookViewer({
       style={{
         backgroundColor: themeColor,
         backgroundImage: backgroundImageUrl ? `url("${backgroundImageUrl}")` : undefined,
-        backgroundSize: "cover",
+        backgroundSize: "contain",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
       }}
