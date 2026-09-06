@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSession } from "@/lib/require-session";
 import { deleteFlipbook, getFlipbookById, setFlipbookPassword, updateFlipbook } from "@/lib/flipbooks";
 import { deleteObject } from "@/lib/r2";
+import { BACKGROUND_POSITIONS } from "@/lib/background-position";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error } = await requireSession();
@@ -22,6 +23,8 @@ const patchSchema = z.object({
   themeColor: z.string().max(20).optional(),
   showToolbar: z.boolean().optional(),
   backgroundImageR2Key: z.string().min(1).nullable().optional(),
+  backgroundFit: z.enum(["contain", "cover"]).optional(),
+  backgroundPosition: z.enum(BACKGROUND_POSITIONS).optional(),
   logoR2Key: z.string().min(1).nullable().optional(),
   logoLinkUrl: z.string().max(2000).nullable().optional(),
   password: z.string().min(1).max(200).nullable().optional(),

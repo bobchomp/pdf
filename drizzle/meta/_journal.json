@@ -22,6 +22,13 @@
       "when": 1788709449658,
       "tag": "0002_sweet_apocalypse",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788710105840,
+      "tag": "0003_mature_norman_osborn",
+      "breakpoints": true
     }
   ]
 }

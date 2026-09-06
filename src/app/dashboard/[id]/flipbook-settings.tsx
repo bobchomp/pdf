@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { BACKGROUND_POSITIONS } from "@/lib/background-position";
 
 type Flipbook = {
   id: string;
@@ -17,6 +18,8 @@ type Flipbook = {
   themeColor: string;
   showToolbar: boolean;
   backgroundImageR2Key: string | null;
+  backgroundFit: "contain" | "cover";
+  backgroundPosition: string;
   logoR2Key: string | null;
   logoLinkUrl: string | null;
 };
@@ -373,10 +376,53 @@ export function FlipbookSettings({
             </div>
           </div>
           {backgroundImageUrl && (
-            <p className="text-xs text-slate-400">
-              The background image covers the whole viewer behind the pages; the background color above still shows through
-              while it loads or if it fails to load.
-            </p>
+            <>
+              <p className="text-xs text-slate-400">
+                The background image sits behind the pages; the background color above still shows through while it loads,
+                if it fails to load, or around it depending on the fit below.
+              </p>
+
+              <div className="flex items-center justify-between">
+                <span>Fit</span>
+                <div className="flex overflow-hidden rounded-md border border-slate-300 text-xs">
+                  <button
+                    onClick={() => patch({ backgroundFit: "contain" })}
+                    disabled={saving}
+                    className={`px-3 py-1.5 ${flipbook.backgroundFit === "contain" ? "bg-slate-900 text-white" : "hover:bg-slate-50"}`}
+                  >
+                    Fit whole image
+                  </button>
+                  <button
+                    onClick={() => patch({ backgroundFit: "cover" })}
+                    disabled={saving}
+                    className={`border-l border-slate-300 px-3 py-1.5 ${flipbook.backgroundFit === "cover" ? "bg-slate-900 text-white" : "hover:bg-slate-50"}`}
+                  >
+                    Fill &amp; crop
+                  </button>
+                </div>
+              </div>
+
+              {flipbook.backgroundFit === "cover" && (
+                <div className="flex items-center justify-between">
+                  <span>Crop from</span>
+                  <div className="grid grid-cols-3 gap-1 rounded-md border border-slate-300 p-1">
+                    {BACKGROUND_POSITIONS.map((pos) => (
+                      <button
+                        key={pos}
+                        onClick={() => patch({ backgroundPosition: pos })}
+                        disabled={saving}
+                        aria-label={pos}
+                        className={`flex h-7 w-7 items-center justify-center rounded ${
+                          flipbook.backgroundPosition === pos ? "bg-slate-900 text-white" : "bg-slate-100 hover:bg-slate-200"
+                        }`}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>

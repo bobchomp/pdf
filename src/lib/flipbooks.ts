@@ -52,6 +52,8 @@ export type FlipbookSettingsPatch = Partial<{
   showToolbar: boolean;
   coverImageR2Key: string | null;
   backgroundImageR2Key: string | null;
+  backgroundFit: "contain" | "cover";
+  backgroundPosition: string;
   logoR2Key: string | null;
   logoLinkUrl: string | null;
   pageCount: number;

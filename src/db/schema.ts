@@ -25,6 +25,10 @@ export const flipbooks = sqliteTable("flipbooks", {
   pageCount: integer("page_count").notNull().default(0),
   coverImageR2Key: text("cover_image_r2_key"),
   backgroundImageR2Key: text("background_image_r2_key"),
+  backgroundFit: text("background_fit", { enum: ["contain", "cover"] })
+    .notNull()
+    .default("contain"),
+  backgroundPosition: text("background_position").notNull().default("center"),
 
   // Privacy
   isPrivate: integer("is_private", { mode: "boolean" }).notNull().default(false),

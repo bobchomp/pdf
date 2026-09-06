@@ -39,6 +39,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       showToolbar: flipbook.showToolbar,
       coverUrl,
       backgroundImageUrl,
+      backgroundFit: flipbook.backgroundFit,
+      backgroundPosition: flipbook.backgroundPosition,
       logoUrl,
       logoLinkUrl: flipbook.logoLinkUrl,
       unlocked,

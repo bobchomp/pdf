@@ -28,6 +28,8 @@ export default async function FlipbookDetailPage({ params }: { params: Promise<{
         themeColor: flipbook.themeColor,
         showToolbar: flipbook.showToolbar,
         backgroundImageR2Key: flipbook.backgroundImageR2Key,
+        backgroundFit: flipbook.backgroundFit,
+        backgroundPosition: flipbook.backgroundPosition,
         logoR2Key: flipbook.logoR2Key,
         logoLinkUrl: flipbook.logoLinkUrl,
       }}

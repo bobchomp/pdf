@@ -44,6 +44,8 @@ export function FlipbookViewer({
   title,
   themeColor,
   backgroundImageUrl,
+  backgroundFit = "contain",
+  backgroundPosition = "center",
   logoUrl,
   logoLinkUrl,
   showToolbar,
@@ -55,6 +57,8 @@ export function FlipbookViewer({
   title: string;
   themeColor: string;
   backgroundImageUrl?: string | null;
+  backgroundFit?: "contain" | "cover";
+  backgroundPosition?: string;
   logoUrl?: string | null;
   logoLinkUrl?: string | null;
   showToolbar: boolean;
@@ -200,8 +204,8 @@ export function FlipbookViewer({
       style={{
         backgroundColor: themeColor,
         backgroundImage: backgroundImageUrl ? `url("${backgroundImageUrl}")` : undefined,
-        backgroundSize: "contain",
-        backgroundPosition: "center",
+        backgroundSize: backgroundFit,
+        backgroundPosition,
         backgroundRepeat: "no-repeat",
       }}
     >
