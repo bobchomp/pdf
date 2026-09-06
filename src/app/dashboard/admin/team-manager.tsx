@@ -41,27 +41,25 @@ export function TeamManager({ users }: { users: User[] }) {
     router.refresh();
   }
 
+  const inputClass =
+    "rounded-[9px] border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-colors focus:border-blue-600 focus:ring-4 focus:ring-blue-100";
+  const cardClass = "rounded-2xl bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]";
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Team</h1>
+      <h1 className="text-[28px] font-bold tracking-tight text-navy-900">Team</h1>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-800">Add a teammate</h2>
+      <section className={`${cardClass} p-7`}>
+        <h2 className="text-[13px] font-semibold text-gray-700">Add a teammate</h2>
         <form onSubmit={handleAdd} className="mt-3 grid grid-cols-2 gap-3">
-          <input
-            placeholder="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-          />
+          <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required className={inputClass} />
           <input
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className={inputClass}
           />
           <input
             type="password"
@@ -70,13 +68,9 @@ export function TeamManager({ users }: { users: User[] }) {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={8}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className={inputClass}
           />
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as "admin" | "member")}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-          >
+          <select value={role} onChange={(e) => setRole(e.target.value as "admin" | "member")} className={inputClass}>
             <option value="member">Member</option>
             <option value="admin">Admin</option>
           </select>
@@ -84,25 +78,25 @@ export function TeamManager({ users }: { users: User[] }) {
           <button
             type="submit"
             disabled={submitting}
-            className="col-span-2 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+            className="col-span-2 rounded-[9px] bg-navy-900 px-4 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:bg-navy-700 disabled:opacity-50"
           >
             {submitting ? "Adding…" : "Add teammate"}
           </button>
         </form>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <h2 className="border-b border-slate-100 px-6 py-3 text-sm font-semibold text-slate-800">Everyone with access</h2>
-        <ul className="divide-y divide-slate-100">
+      <section className={cardClass}>
+        <h2 className="border-b border-gray-100 px-7 py-4 text-[13px] font-semibold text-gray-700">Everyone with access</h2>
+        <ul className="divide-y divide-gray-100">
           {users.map((u) => (
-            <li key={u.id} className="flex items-center justify-between px-6 py-3 text-sm">
+            <li key={u.id} className="flex items-center justify-between px-7 py-3.5 text-sm">
               <div>
-                <p className="font-medium text-slate-800">{u.name}</p>
-                <p className="text-slate-400">
+                <p className="font-semibold text-gray-900">{u.name}</p>
+                <p className="text-gray-500">
                   {u.email} · {u.role}
                 </p>
               </div>
-              <button onClick={() => handleRemove(u.id)} className="text-slate-400 hover:text-red-600">
+              <button onClick={() => handleRemove(u.id)} className="text-sm font-medium text-gray-400 hover:text-red-600">
                 Remove
               </button>
             </li>

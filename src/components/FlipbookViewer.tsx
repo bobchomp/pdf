@@ -7,6 +7,7 @@ import type { PDFDocumentProxy } from "pdfjs-dist";
 import { loadPdf } from "@/lib/pdf-client";
 import { playPageFlipSound } from "@/lib/page-flip-sound";
 import { PdfPage } from "@/components/PdfPage";
+import { IconChevronLeft, IconChevronRight, IconDownload, IconPrint, IconFullscreen } from "@/components/icons";
 
 const HTMLFlipBook = dynamic(() => import("react-pageflip"), { ssr: false }) as unknown as React.ComponentType<
   Record<string, unknown>
@@ -211,7 +212,7 @@ export function FlipbookViewer({
 
   if (!doc) {
     return (
-      <div className="flex h-full min-h-[400px] items-center justify-center text-sm text-slate-400">
+      <div className="flex h-full min-h-[400px] items-center justify-center text-sm text-gray-400">
         Loading flipbook…
       </div>
     );
@@ -243,7 +244,7 @@ export function FlipbookViewer({
                 aria-label="Previous page"
                 className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20 disabled:opacity-30"
               >
-                ‹
+                <IconChevronLeft size={15} />
               </button>
               <span className="px-1 tabular-nums text-white/60">
                 {currentPage + 1} / {pageCount}
@@ -254,25 +255,33 @@ export function FlipbookViewer({
                 aria-label="Next page"
                 className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20 disabled:opacity-30"
               >
-                ›
+                <IconChevronRight size={15} />
               </button>
             </div>
             {allowPrint && (
-              <button onClick={handlePrint} className="rounded bg-white/10 px-2 py-1 hover:bg-white/20">
-                Print
+              <button
+                onClick={handlePrint}
+                aria-label="Print"
+                className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20"
+              >
+                <IconPrint size={15} />
               </button>
             )}
             {allowDownload && (
-              <button onClick={handleDownload} className="rounded bg-white/10 px-2 py-1 hover:bg-white/20">
-                Download
+              <button
+                onClick={handleDownload}
+                aria-label="Download"
+                className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20"
+              >
+                <IconDownload size={15} />
               </button>
             )}
             <button
               onClick={toggleFullscreen}
               aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-              className="rounded bg-white/10 px-2 py-1 hover:bg-white/20"
+              className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20"
             >
-              {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              <IconFullscreen size={15} />
             </button>
           </div>
         </div>
@@ -285,7 +294,7 @@ export function FlipbookViewer({
           aria-label="Previous page"
           className="absolute left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-0 sm:left-4"
         >
-          ‹
+          <IconChevronLeft size={20} />
         </button>
         <button
           onClick={() => flipBookRef.current?.pageFlip()?.flipNext()}
@@ -293,7 +302,7 @@ export function FlipbookViewer({
           aria-label="Next page"
           className="absolute right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-0 sm:right-4"
         >
-          ›
+          <IconChevronRight size={20} />
         </button>
 
         {wrapperWidth && (

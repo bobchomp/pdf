@@ -86,38 +86,41 @@ export default function NewFlipbookPage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="text-2xl font-semibold text-slate-900">Upload a PDF</h1>
-      <p className="mt-1 text-sm text-slate-500">It&apos;ll be stored in your Cloudflare R2 bucket and turned into a flipbook.</p>
+      <h1 className="text-[26px] font-bold tracking-tight text-navy-900">Upload a PDF</h1>
+      <p className="mt-1.5 text-sm text-gray-600">It&apos;ll be stored in your Cloudflare R2 bucket and turned into a flipbook.</p>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <form
+        onSubmit={handleSubmit}
+        className="mt-6 space-y-4 rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]"
+      >
         <div>
-          <label className="block text-sm font-medium text-slate-700">PDF file</label>
+          <label className="block text-[13px] font-semibold text-gray-700">PDF file</label>
           <input
             type="file"
             accept="application/pdf"
             onChange={handleFileChange}
             required
-            className="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium hover:file:bg-slate-200"
+            className="mt-1.5 block w-full text-sm text-gray-600 file:mr-3 file:rounded-[8px] file:border-0 file:bg-gray-100 file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-gray-700 hover:file:bg-gray-200"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">Title</label>
+          <label className="block text-[13px] font-semibold text-gray-700">Title</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            className="mt-1.5 w-full rounded-[10px] border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-colors focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
           />
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
-        {status && !error && <p className="text-sm text-slate-500">{status}</p>}
+        {status && !error && <p className="text-sm text-gray-500">{status}</p>}
 
         <button
           type="submit"
           disabled={!file || submitting}
-          className="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+          className="w-full rounded-[10px] bg-navy-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-navy-700 disabled:opacity-60"
         >
           {submitting ? "Uploading…" : "Upload & create flipbook"}
         </button>

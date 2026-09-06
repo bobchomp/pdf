@@ -1,37 +1,36 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { Logo } from "@/components/Logo";
+import { DashboardNav } from "./nav";
 import { logoutAction } from "./actions";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link href="/dashboard" className="font-semibold text-slate-900">
-            📖 Flipbooks
+    <div className="min-h-screen bg-gray-100">
+      <header className="border-b border-gray-200 bg-white">
+        <div className="mx-auto flex h-[68px] max-w-6xl items-center justify-between px-6">
+          <Link href="/dashboard">
+            <Logo size={22} textClassName="text-base" />
           </Link>
-          <nav className="flex items-center gap-4 text-sm text-slate-600">
-            <Link href="/dashboard" className="hover:text-slate-900">
-              My flipbooks
-            </Link>
-            {session?.user.role === "admin" && (
-              <Link href="/dashboard/admin" className="hover:text-slate-900">
-                Team
-              </Link>
-            )}
-            <span className="text-slate-300">|</span>
-            <span className="text-slate-500">{session?.user.email}</span>
+
+          <div className="flex items-center gap-7">
+            <DashboardNav isAdmin={session?.user.role === "admin"} />
+            <span className="h-5 w-px bg-gray-200" />
+            <span className="text-[13.5px] text-gray-400">{session?.user.email}</span>
             <form action={logoutAction}>
-              <button type="submit" className="rounded-md border border-slate-200 px-3 py-1.5 hover:bg-slate-50">
+              <button
+                type="submit"
+                className="rounded-[9px] border border-gray-300 px-4 py-2 text-[13.5px] font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+              >
                 Sign out
               </button>
             </form>
-          </nav>
+          </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
     </div>
   );
 }

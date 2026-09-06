@@ -4,6 +4,15 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { BACKGROUND_POSITIONS } from "@/lib/background-position";
+import { Switch } from "@/components/Switch";
+import { IconImage, IconLock } from "@/components/icons";
+
+const inputClass =
+  "rounded-[9px] border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-colors focus:border-blue-600 focus:ring-4 focus:ring-blue-100";
+const outlineButtonClass =
+  "rounded-[9px] border border-gray-300 px-4 py-2.5 text-[13.5px] font-semibold text-gray-700 transition-colors hover:bg-gray-50";
+const primaryButtonClass =
+  "rounded-[9px] bg-navy-900 px-5 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:bg-navy-700 disabled:opacity-50";
 
 type Flipbook = {
   id: string;
@@ -163,89 +172,83 @@ export function FlipbookSettings({
   const maxCount = Math.max(1, ...(stats?.last30Days.map((d) => d.count) ?? [1]));
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{flipbook.title}</h1>
-          <p className="text-sm text-slate-400">
+          <h1 className="text-[26px] font-bold tracking-tight text-navy-900">{flipbook.title}</h1>
+          <p className="mt-1 text-[13.5px] text-gray-400">
             {flipbook.status} · {flipbook.pageCount} pages
           </p>
         </div>
-        <div className="flex gap-2">
-          <a
-            href={`/f/${flipbook.slug}`}
-            target="_blank"
-            className="rounded-md border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"
-          >
+        <div className="flex gap-2.5">
+          <a href={`/f/${flipbook.slug}`} target="_blank" className={outlineButtonClass}>
             View
           </a>
-          <button onClick={handleDelete} className="rounded-md border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50">
+          <button
+            onClick={handleDelete}
+            className="rounded-[9px] border border-red-200 px-4 py-2.5 text-[13.5px] font-semibold text-red-600 transition-colors hover:bg-red-50"
+          >
             Delete
           </button>
         </div>
       </div>
 
-      {message && <p className="text-sm text-emerald-600">{message}</p>}
+      {message && <p className="text-sm font-medium text-green-600">{message}</p>}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-800">Details</h2>
-        <div className="mt-3 space-y-3">
+      <section className="rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]">
+        <h2 className="text-[15px] font-semibold text-navy-900">Details</h2>
+        <div className="mt-4 space-y-3.5">
           <div>
-            <label className="text-xs font-medium text-slate-500">Title</label>
+            <label className="text-[12.5px] font-semibold text-gray-400">Title</label>
             <input
               type="text"
               value={titleDraft}
               onChange={(e) => setTitleDraft(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className={`mt-1.5 w-full ${inputClass}`}
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-500">Description</label>
+            <label className="text-[12.5px] font-semibold text-gray-400">Description</label>
             <textarea
               value={descriptionDraft}
               onChange={(e) => setDescriptionDraft(e.target.value)}
               rows={3}
               placeholder="Optional — shown to visitors before they open the flipbook"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className={`mt-1.5 w-full ${inputClass}`}
             />
           </div>
           <button
             onClick={() => patch({ title: titleDraft, description: descriptionDraft })}
             disabled={saving || (titleDraft === flipbook.title && descriptionDraft === flipbook.description) || !titleDraft.trim()}
-            className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            className={primaryButtonClass}
           >
             Save details
           </button>
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-800">Share</h2>
-        <div className="mt-3 space-y-3">
+      <section className="rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]">
+        <h2 className="text-[15px] font-semibold text-navy-900">Share</h2>
+        <div className="mt-4 space-y-4">
           <div>
-            <label className="text-xs font-medium text-slate-500">Public link</label>
-            <div className="mt-1 flex gap-2">
-              <input readOnly value={publicUrl} className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm" />
-              <button onClick={() => copy(publicUrl)} className="rounded-md border border-slate-300 px-3 text-sm hover:bg-slate-50">
+            <label className="text-[12.5px] font-semibold text-gray-400">Public link</label>
+            <div className="mt-1.5 flex gap-2">
+              <input readOnly value={publicUrl} className={`w-full bg-gray-50 ${inputClass}`} />
+              <button onClick={() => copy(publicUrl)} className={outlineButtonClass}>
                 Copy
               </button>
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-500">Embed on your website</label>
-            <div className="mt-1 flex gap-2">
-              <textarea
-                readOnly
-                value={embedCode}
-                rows={2}
-                className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 font-mono text-xs"
-              />
-              <button onClick={() => copy(embedCode)} className="h-fit rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">
+            <label className="text-[12.5px] font-semibold text-gray-400">Embed on your website</label>
+            <div className="mt-1.5 flex gap-2">
+              <textarea readOnly value={embedCode} rows={2} className={`w-full bg-gray-50 font-mono text-xs ${inputClass}`} />
+              <button onClick={() => copy(embedCode)} className={`h-fit ${outlineButtonClass}`}>
                 Copy
               </button>
             </div>
             {flipbook.isPrivate && (
-              <p className="mt-1 text-xs text-amber-600">
+              <p className="mt-2 text-xs leading-relaxed text-amber-600">
                 Note: password-protected flipbooks may prompt for the password again inside the embed on some browsers due to
                 third-party cookie restrictions.
               </p>
@@ -254,16 +257,19 @@ export function FlipbookSettings({
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-800">Privacy</h2>
-        <div className="mt-3 space-y-3">
+      <section className="rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]">
+        <h2 className="text-[15px] font-semibold text-navy-900">Privacy</h2>
+        <div className="mt-4 space-y-3">
           {flipbook.isPrivate ? (
-            <div className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2 text-sm">
-              <span>🔒 Password protected</span>
+            <div className="flex items-center justify-between rounded-[9px] bg-gray-50 px-4 py-3 text-sm">
+              <span className="flex items-center gap-2 font-medium text-gray-900">
+                <IconLock size={13} className="text-gray-600" />
+                Password protected
+              </span>
               <button
                 onClick={() => patch({ password: null })}
                 disabled={saving}
-                className="text-sm text-slate-500 underline hover:text-slate-800"
+                className="text-[13px] font-semibold text-blue-600 hover:text-navy-700"
               >
                 Remove password
               </button>
@@ -275,13 +281,9 @@ export function FlipbookSettings({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Set a password to make this private"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className={`w-full ${inputClass}`}
               />
-              <button
-                onClick={() => password && patch({ password })}
-                disabled={saving || !password}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
-              >
+              <button onClick={() => password && patch({ password })} disabled={saving || !password} className={outlineButtonClass}>
                 Set password
               </button>
             </div>
@@ -289,59 +291,45 @@ export function FlipbookSettings({
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-800">Viewer controls</h2>
-        <div className="mt-3 space-y-3 text-sm">
-          <label className="flex items-center justify-between">
-            <span>Allow visitors to download the PDF</span>
-            <input
-              type="checkbox"
-              checked={flipbook.allowDownload}
-              onChange={(e) => patch({ allowDownload: e.target.checked })}
-              className="h-4 w-4"
-            />
-          </label>
-          <label className="flex items-center justify-between">
-            <span>Allow visitors to print</span>
-            <input
-              type="checkbox"
-              checked={flipbook.allowPrint}
-              onChange={(e) => patch({ allowPrint: e.target.checked })}
-              className="h-4 w-4"
-            />
-          </label>
-          <label className="flex items-center justify-between">
-            <span>Show toolbar (title, page count, buttons)</span>
-            <input
-              type="checkbox"
-              checked={flipbook.showToolbar}
-              onChange={(e) => patch({ showToolbar: e.target.checked })}
-              className="h-4 w-4"
-            />
-          </label>
+      <section className="rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]">
+        <h2 className="text-[15px] font-semibold text-navy-900">Viewer controls</h2>
+        <div className="mt-4 space-y-4 text-sm">
           <div className="flex items-center justify-between">
-            <span>Background color</span>
+            <span className="text-gray-900">Allow visitors to download the PDF</span>
+            <Switch checked={flipbook.allowDownload} onChange={(v) => patch({ allowDownload: v })} label="Allow download" />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-900">Allow visitors to print</span>
+            <Switch checked={flipbook.allowPrint} onChange={(v) => patch({ allowPrint: v })} label="Allow print" />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-900">Show toolbar (title, page count, buttons)</span>
+            <Switch checked={flipbook.showToolbar} onChange={(v) => patch({ showToolbar: v })} label="Show toolbar" />
+          </div>
+
+          <div className="h-px bg-gray-100" />
+
+          <div className="flex items-center justify-between">
+            <span className="text-gray-900">Background color</span>
             <input
               type="color"
               value={flipbook.themeColor}
               onChange={(e) => patch({ themeColor: e.target.value })}
-              className="h-8 w-14 cursor-pointer rounded border border-slate-300"
+              className="h-8 w-11 cursor-pointer rounded-[8px] border border-gray-200"
             />
           </div>
+
           <div className="flex items-center justify-between gap-3">
-            <span>Background image</span>
-            <div className="flex items-center gap-2">
-              {backgroundImageUrl && (
-                <Image
-                  src={backgroundImageUrl}
-                  alt=""
-                  width={56}
-                  height={32}
-                  unoptimized
-                  className="h-8 w-14 rounded border border-slate-300 object-cover"
-                />
+            <span className="text-gray-900">Background image</span>
+            <div className="flex items-center gap-2.5">
+              {backgroundImageUrl ? (
+                <Image src={backgroundImageUrl} alt="" width={56} height={32} unoptimized className="h-8 w-14 rounded-[7px] border border-gray-200 object-cover" />
+              ) : (
+                <div className="flex h-8 w-14 items-center justify-center rounded-[7px] border border-gray-200 bg-gray-100">
+                  <IconImage size={16} className="text-gray-300" />
+                </div>
               )}
-              <label className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+              <label className="cursor-pointer rounded-[8px] border border-gray-300 px-3.5 py-2 text-[13px] font-semibold text-gray-700 transition-colors hover:bg-gray-50">
                 {uploadingBackground ? "Uploading…" : backgroundImageUrl ? "Replace" : "Upload"}
                 <input
                   type="file"
@@ -368,7 +356,7 @@ export function FlipbookSettings({
                 <button
                   onClick={() => removeImage("backgroundImageR2Key", setBackgroundImageUrl, "Background image")}
                   disabled={saving}
-                  className="text-sm text-slate-500 underline hover:text-slate-800"
+                  className="text-[13px] font-semibold text-blue-600 hover:text-navy-700"
                 >
                   Remove
                 </button>
@@ -377,25 +365,25 @@ export function FlipbookSettings({
           </div>
           {backgroundImageUrl && (
             <>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs leading-relaxed text-gray-400">
                 The background image sits behind the pages; the background color above still shows through while it loads,
                 if it fails to load, or around it depending on the fit below.
               </p>
 
               <div className="flex items-center justify-between">
-                <span>Fit</span>
-                <div className="flex overflow-hidden rounded-md border border-slate-300 text-xs">
+                <span className="text-gray-900">Fit</span>
+                <div className="flex overflow-hidden rounded-[8px] border border-gray-300 text-xs">
                   <button
                     onClick={() => patch({ backgroundFit: "contain" })}
                     disabled={saving}
-                    className={`px-3 py-1.5 ${flipbook.backgroundFit === "contain" ? "bg-slate-900 text-white" : "hover:bg-slate-50"}`}
+                    className={`px-3.5 py-1.5 font-semibold ${flipbook.backgroundFit === "contain" ? "bg-navy-900 text-white" : "text-gray-700 hover:bg-gray-50"}`}
                   >
                     Fit whole image
                   </button>
                   <button
                     onClick={() => patch({ backgroundFit: "cover" })}
                     disabled={saving}
-                    className={`border-l border-slate-300 px-3 py-1.5 ${flipbook.backgroundFit === "cover" ? "bg-slate-900 text-white" : "hover:bg-slate-50"}`}
+                    className={`border-l border-gray-300 px-3.5 py-1.5 font-semibold ${flipbook.backgroundFit === "cover" ? "bg-navy-900 text-white" : "text-gray-700 hover:bg-gray-50"}`}
                   >
                     Fill &amp; crop
                   </button>
@@ -404,16 +392,16 @@ export function FlipbookSettings({
 
               {flipbook.backgroundFit === "cover" && (
                 <div className="flex items-center justify-between">
-                  <span>Crop from</span>
-                  <div className="grid grid-cols-3 gap-1 rounded-md border border-slate-300 p-1">
+                  <span className="text-gray-900">Crop from</span>
+                  <div className="grid grid-cols-3 gap-1 rounded-[8px] border border-gray-300 p-1">
                     {BACKGROUND_POSITIONS.map((pos) => (
                       <button
                         key={pos}
                         onClick={() => patch({ backgroundPosition: pos })}
                         disabled={saving}
                         aria-label={pos}
-                        className={`flex h-7 w-7 items-center justify-center rounded ${
-                          flipbook.backgroundPosition === pos ? "bg-slate-900 text-white" : "bg-slate-100 hover:bg-slate-200"
+                        className={`flex h-7 w-7 items-center justify-center rounded-[5px] transition-colors ${
+                          flipbook.backgroundPosition === pos ? "bg-navy-900 text-white" : "bg-gray-100 text-gray-400 hover:bg-gray-200"
                         }`}
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-current" />
@@ -427,16 +415,20 @@ export function FlipbookSettings({
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-800">Branding</h2>
-        <div className="mt-3 space-y-3 text-sm">
+      <section className="rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]">
+        <h2 className="text-[15px] font-semibold text-navy-900">Branding</h2>
+        <div className="mt-4 space-y-3.5 text-sm">
           <div className="flex items-center justify-between gap-3">
-            <span>Logo</span>
-            <div className="flex items-center gap-2">
-              {logoUrl && (
-                <Image src={logoUrl} alt="" width={56} height={32} unoptimized className="h-8 w-14 rounded border border-slate-300 object-contain" />
+            <span className="text-gray-900">Logo</span>
+            <div className="flex items-center gap-2.5">
+              {logoUrl ? (
+                <Image src={logoUrl} alt="" width={56} height={32} unoptimized className="h-8 w-14 rounded-[7px] border border-gray-200 object-contain" />
+              ) : (
+                <div className="flex h-8 w-14 items-center justify-center rounded-[7px] border border-gray-200 bg-gray-100">
+                  <IconImage size={16} className="text-gray-300" />
+                </div>
               )}
-              <label className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+              <label className="cursor-pointer rounded-[8px] border border-gray-300 px-3.5 py-2 text-[13px] font-semibold text-gray-700 transition-colors hover:bg-gray-50">
                 {uploadingLogo ? "Uploading…" : logoUrl ? "Replace" : "Upload"}
                 <input
                   type="file"
@@ -456,53 +448,53 @@ export function FlipbookSettings({
                 <button
                   onClick={() => removeImage("logoR2Key", setLogoUrl, "Logo")}
                   disabled={saving}
-                  className="text-sm text-slate-500 underline hover:text-slate-800"
+                  className="text-[13px] font-semibold text-blue-600 hover:text-navy-700"
                 >
                   Remove
                 </button>
               )}
             </div>
           </div>
-          <p className="text-xs text-slate-400">Shown in the bottom-left corner of the viewer, over the background.</p>
+          <p className="text-xs text-gray-400">Shown in the bottom-left corner of the viewer, over the background.</p>
 
           <div>
-            <label className="text-xs font-medium text-slate-500">Link when the logo is clicked (optional)</label>
-            <div className="mt-1 flex gap-2">
+            <label className="text-[12.5px] font-semibold text-gray-400">Link when the logo is clicked (optional)</label>
+            <div className="mt-1.5 flex gap-2">
               <input
                 type="text"
                 value={logoLinkDraft}
                 onChange={(e) => setLogoLinkDraft(e.target.value)}
                 placeholder="https://yourwebsite.com"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className={`w-full ${inputClass}`}
               />
               <button
                 onClick={saveLogoLink}
                 disabled={saving || logoLinkDraft.trim() === (flipbook.logoLinkUrl ?? "")}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+                className={outlineButtonClass}
               >
                 Save
               </button>
             </div>
-            {!logoUrl && logoLinkDraft && <p className="mt-1 text-xs text-amber-600">Upload a logo above for this link to have anywhere to go.</p>}
+            {!logoUrl && logoLinkDraft && <p className="mt-1.5 text-xs text-amber-600">Upload a logo above for this link to have anywhere to go.</p>}
           </div>
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-800">Analytics</h2>
+      <section className="rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]">
+        <h2 className="text-[15px] font-semibold text-navy-900">Analytics</h2>
         {stats ? (
-          <div className="mt-3">
-            <p className="text-2xl font-semibold text-slate-900">{stats.totalViews}</p>
-            <p className="text-xs text-slate-400">total views</p>
-            <div className="mt-4 flex h-24 items-end gap-0.5">
+          <div className="mt-4">
+            <p className="text-[30px] font-bold text-navy-900">{stats.totalViews}</p>
+            <p className="text-xs text-gray-400">total views</p>
+            <div className="mt-5 flex h-24 items-end gap-1">
               {stats.last30Days.length === 0 ? (
-                <p className="text-xs text-slate-300">No views in the last 30 days.</p>
+                <p className="text-xs text-gray-300">No views in the last 30 days.</p>
               ) : (
                 stats.last30Days.map((d) => (
                   <div
                     key={d.date}
                     title={`${d.date}: ${d.count}`}
-                    className="flex-1 rounded-t bg-slate-700"
+                    className="flex-1 rounded-t-[3px] bg-blue-100"
                     style={{ height: `${(d.count / maxCount) * 100}%`, minHeight: 2 }}
                   />
                 ))
@@ -510,7 +502,7 @@ export function FlipbookSettings({
             </div>
           </div>
         ) : (
-          <p className="mt-2 text-sm text-slate-400">Loading…</p>
+          <p className="mt-2 text-sm text-gray-400">Loading…</p>
         )}
       </section>
     </div>

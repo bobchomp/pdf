@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { FlipbookViewer } from "@/components/FlipbookViewer";
+import { Logo } from "@/components/Logo";
+import { IconLock } from "@/components/icons";
 
 type PublicFlipbook = {
   id: string;
@@ -91,36 +93,45 @@ export function PublicFlipbook({ slug, embed = false }: { slug: string; embed?: 
 
   if (notFound) {
     return (
-      <div className="flex h-full min-h-screen items-center justify-center bg-slate-100 text-slate-500">
+      <div className="flex h-full min-h-screen items-center justify-center bg-gray-100 px-4 text-gray-500">
         This flipbook doesn&apos;t exist or isn&apos;t published.
       </div>
     );
   }
 
   if (!flipbook) {
-    return <div className="flex h-full min-h-screen items-center justify-center bg-slate-100 text-slate-400">Loading…</div>;
+    return <div className="flex h-full min-h-screen items-center justify-center bg-gray-100 text-gray-400">Loading…</div>;
   }
 
   if (!flipbook.unlocked) {
     return (
-      <div className="flex h-full min-h-screen items-center justify-center bg-slate-900 px-4">
-        <form onSubmit={handleUnlock} className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
-          <h1 className="text-lg font-semibold text-slate-900">{flipbook.title}</h1>
-          {flipbook.description && <p className="mt-1 text-sm text-slate-600">{flipbook.description}</p>}
-          <p className="mt-1 text-sm text-slate-500">This flipbook is password protected.</p>
+      <div className="flex h-full min-h-screen items-center justify-center bg-navy-900 px-4">
+        <form
+          onSubmit={handleUnlock}
+          className="w-full max-w-sm rounded-[20px] bg-white p-7 shadow-[0_20px_40px_-12px_rgba(15,32,68,0.14),0_4px_12px_rgba(15,32,68,0.06)]"
+        >
+          <div className="mb-5 flex justify-center">
+            <Logo size={22} textClassName="text-base" />
+          </div>
+          <div className="flex items-center gap-2">
+            <IconLock size={14} className="text-navy-700" />
+            <h1 className="text-[15px] font-semibold text-navy-900">{flipbook.title}</h1>
+          </div>
+          {flipbook.description && <p className="mt-1.5 text-sm text-gray-600">{flipbook.description}</p>}
+          <p className="mt-1.5 text-sm text-gray-500">This flipbook is password protected.</p>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className="mt-4 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            className="mt-4 w-full rounded-[10px] border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-colors focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
             autoFocus
           />
           {unlockError && <p className="mt-2 text-sm text-red-600">{unlockError}</p>}
           <button
             type="submit"
             disabled={unlocking}
-            className="mt-4 w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+            className="mt-4 w-full rounded-[10px] bg-navy-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-navy-700 disabled:opacity-60"
           >
             {unlocking ? "Checking…" : "Unlock"}
           </button>
@@ -130,7 +141,7 @@ export function PublicFlipbook({ slug, embed = false }: { slug: string; embed?: 
   }
 
   if (!pdfUrl) {
-    return <div className="flex h-full min-h-screen items-center justify-center bg-slate-900 text-slate-400">Loading flipbook…</div>;
+    return <div className="flex h-full min-h-screen items-center justify-center bg-navy-900 text-gray-400">Loading flipbook…</div>;
   }
 
   return (
