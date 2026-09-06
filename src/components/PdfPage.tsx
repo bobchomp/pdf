@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { renderPageToCanvas } from "@/lib/pdf-client";
+import { renderPageToCanvas, getPageLinks, type PdfPageLink } from "@/lib/pdf-client";
 
 export function PdfPage({
   doc,
@@ -15,6 +15,7 @@ export function PdfPage({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [rendered, setRendered] = useState(false);
+  const [links, setLinks] = useState<PdfPageLink[]>([]);
 
   useEffect(() => {
     if (!shouldRender || rendered || !canvasRef.current) return;
@@ -26,6 +27,14 @@ export function PdfPage({
       })
       .catch(() => {
         // page failed to render; leave blank
+      });
+
+    getPageLinks(doc, pageNumber)
+      .then((found) => {
+        if (!cancelled) setLinks(found);
+      })
+      .catch(() => {
+        // no clickable links for this page; not fatal
       });
 
     return () => {
@@ -41,6 +50,22 @@ export function PdfPage({
           {pageNumber}
         </div>
       )}
+      {links.map((link, i) => (
+        <a
+          key={i}
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={link.url}
+          className="absolute hover:outline hover:outline-2 hover:outline-offset-1 hover:outline-blue-400/70"
+          style={{
+            left: `${link.leftPct}%`,
+            top: `${link.topPct}%`,
+            width: `${link.widthPct}%`,
+            height: `${link.heightPct}%`,
+          }}
+        />
+      ))}
     </div>
   );
 }
