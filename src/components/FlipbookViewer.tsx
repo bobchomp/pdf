@@ -337,7 +337,7 @@ export function FlipbookViewer({
                 clickEventForward={true}
                 useMouseEvents={true}
                 swipeDistance={30}
-                showPageCorners={true}
+                showPageCorners={false}
                 disableFlipByClick={false}
                 onFlip={(e: { data: number }) => setCurrentPage(e.data)}
                 onInit={(e: { data: { mode: "portrait" | "landscape" } }) => setOrientation(e.data.mode)}
