@@ -49,6 +49,53 @@ export type PdfPageLink = {
   heightPct: number;
 };
 
+type PixelRect = { left: number; top: number; width: number; height: number };
+
+/**
+ * PDF Link annotations carry only a single bounding Rect (unlike markup annotations, which can
+ * also carry tighter QuadPoints) — so when an export tool hands out a generous or duplicated Rect
+ * for links sitting close together (e.g. several URLs packed onto one or two lines), their boxes
+ * can end up overlapping in the source PDF itself, and the topmost one silently swallows clicks
+ * meant for its neighbors. There's no more precise geometry to fall back on, so this clips every
+ * overlapping pair at the boundary between them — along whichever axis they overlap *less* on,
+ * since that's the axis they're actually laid out along (side by side, or stacked) — giving each
+ * link exclusive ownership of its own share of the disputed area instead of losing it entirely.
+ */
+function resolveOverlappingRects(rects: PixelRect[]): void {
+  for (let i = 0; i < rects.length; i++) {
+    for (let j = i + 1; j < rects.length; j++) {
+      const a = rects[i];
+      const b = rects[j];
+      const overlapLeft = Math.max(a.left, b.left);
+      const overlapRight = Math.min(a.left + a.width, b.left + b.width);
+      const overlapTop = Math.max(a.top, b.top);
+      const overlapBottom = Math.min(a.top + a.height, b.top + b.height);
+      const overlapWidth = overlapRight - overlapLeft;
+      const overlapHeight = overlapBottom - overlapTop;
+      if (overlapWidth <= 0 || overlapHeight <= 0) continue;
+
+      const overlapFractionX = overlapWidth / Math.min(a.width, b.width);
+      const overlapFractionY = overlapHeight / Math.min(a.height, b.height);
+
+      if (overlapFractionX <= overlapFractionY) {
+        const mid = (overlapLeft + overlapRight) / 2;
+        const [left, right] = a.left <= b.left ? [a, b] : [b, a];
+        left.width = Math.min(left.width, mid - left.left);
+        const rightNewLeft = Math.max(right.left, mid);
+        right.width = right.left + right.width - rightNewLeft;
+        right.left = rightNewLeft;
+      } else {
+        const mid = (overlapTop + overlapBottom) / 2;
+        const [top, bottom] = a.top <= b.top ? [a, b] : [b, a];
+        top.height = Math.min(top.height, mid - top.top);
+        const bottomNewTop = Math.max(bottom.top, mid);
+        bottom.height = bottom.top + bottom.height - bottomNewTop;
+        bottom.top = bottomNewTop;
+      }
+    }
+  }
+}
+
 /**
  * Hyperlinks embedded in the PDF itself (e.g. from Word/Canva/InDesign export) as annotation
  * data, converted to percentage-based boxes. Pages are rendered as flat canvas images, which
@@ -60,7 +107,7 @@ export async function getPageLinks(doc: pdfjsLib.PDFDocumentProxy, pageNumber: n
   const viewport = page.getViewport({ scale: 1 });
   const annotations = await page.getAnnotations({ intent: "display" });
 
-  const links: PdfPageLink[] = [];
+  const entries: { url: string; rect: PixelRect }[] = [];
   for (const annotation of annotations) {
     if (annotation.subtype !== "Link") continue;
     const url: string | undefined = annotation.url || annotation.unsafeUrl;
@@ -69,18 +116,25 @@ export async function getPageLinks(doc: pdfjsLib.PDFDocumentProxy, pageNumber: n
     const [rx1, ry1, rx2, ry2] = annotation.rect as [number, number, number, number];
     const [vx1, vy1] = viewport.convertToViewportPoint(rx1, ry1);
     const [vx2, vy2] = viewport.convertToViewportPoint(rx2, ry2);
-    const left = Math.min(vx1, vx2);
-    const top = Math.min(vy1, vy2);
-    const width = Math.abs(vx2 - vx1);
-    const height = Math.abs(vy2 - vy1);
 
-    links.push({
+    entries.push({
       url,
-      leftPct: (left / viewport.width) * 100,
-      topPct: (top / viewport.height) * 100,
-      widthPct: (width / viewport.width) * 100,
-      heightPct: (height / viewport.height) * 100,
+      rect: {
+        left: Math.min(vx1, vx2),
+        top: Math.min(vy1, vy2),
+        width: Math.abs(vx2 - vx1),
+        height: Math.abs(vy2 - vy1),
+      },
     });
   }
-  return links;
+
+  resolveOverlappingRects(entries.map((entry) => entry.rect));
+
+  return entries.map(({ url, rect }) => ({
+    url,
+    leftPct: (rect.left / viewport.width) * 100,
+    topPct: (rect.top / viewport.height) * 100,
+    widthPct: (rect.width / viewport.width) * 100,
+    heightPct: (rect.height / viewport.height) * 100,
+  }));
 }
