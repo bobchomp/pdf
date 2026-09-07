@@ -43,3 +43,19 @@ export async function verifyPassword(email: string, password: string) {
   const valid = await bcrypt.compare(password, user.passwordHash);
   return valid ? user : null;
 }
+
+const RESET_PASSWORD = "password";
+
+/** Sets a user's password to a known default and flags it for a forced reset on next login. */
+export async function resetUserPassword(id: string) {
+  const passwordHash = await bcrypt.hash(RESET_PASSWORD, 12);
+  await db.update(schema.users).set({ passwordHash, mustResetPassword: true }).where(eq(schema.users.id, id));
+  return getUserById(id);
+}
+
+/** Sets a user's own chosen password and clears the forced-reset flag. */
+export async function updateUserPassword(id: string, newPassword: string) {
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await db.update(schema.users).set({ passwordHash, mustResetPassword: false }).where(eq(schema.users.id, id));
+  return getUserById(id);
+}

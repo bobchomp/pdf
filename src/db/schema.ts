@@ -8,6 +8,7 @@ export const users = sqliteTable("users", {
   role: text("role", { enum: ["admin", "member"] })
     .notNull()
     .default("member"),
+  mustResetPassword: integer("must_reset_password", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 

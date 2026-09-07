@@ -9,7 +9,14 @@ export async function GET() {
 
   const users = await listUsers();
   return Response.json({
-    users: users.map((u) => ({ id: u.id, email: u.email, name: u.name, role: u.role, createdAt: u.createdAt })),
+    users: users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      mustResetPassword: u.mustResetPassword,
+      createdAt: u.createdAt,
+    })),
   });
 }
 

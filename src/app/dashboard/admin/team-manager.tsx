@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type User = { id: string; email: string; name: string; role: string };
+type User = { id: string; email: string; name: string; role: string; mustResetPassword: boolean };
 
 export function TeamManager({ users }: { users: User[] }) {
   const router = useRouter();
@@ -13,6 +13,8 @@ export function TeamManager({ users }: { users: User[] }) {
   const [role, setRole] = useState<"admin" | "member">("member");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [resettingId, setResettingId] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -41,6 +43,23 @@ export function TeamManager({ users }: { users: User[] }) {
     router.refresh();
   }
 
+  async function handleResetPassword(u: User) {
+    if (!confirm(`Reset ${u.name}'s password to "password"? They'll be asked to choose a new one the next time they sign in.`)) return;
+    setResettingId(u.id);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/users/${u.id}/reset-password`, { method: "POST" });
+      if (res.ok) {
+        setMessage(`${u.name}'s password was reset to "password".`);
+        router.refresh();
+      } else {
+        setMessage("Failed to reset password.");
+      }
+    } finally {
+      setResettingId(null);
+    }
+  }
+
   const inputClass =
     "rounded-[9px] border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-colors focus:border-blue-600 focus:ring-4 focus:ring-blue-100";
   const cardClass = "rounded-2xl bg-white shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]";
@@ -48,6 +67,8 @@ export function TeamManager({ users }: { users: User[] }) {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-[28px] font-bold tracking-tight text-navy-900">Team</h1>
+
+      {message && <p className="text-sm font-medium text-green-600">{message}</p>}
 
       <section className={`${cardClass} p-7`}>
         <h2 className="text-[13px] font-semibold text-gray-700">Add a teammate</h2>
@@ -91,14 +112,30 @@ export function TeamManager({ users }: { users: User[] }) {
           {users.map((u) => (
             <li key={u.id} className="flex items-center justify-between px-7 py-3.5 text-sm">
               <div>
-                <p className="font-semibold text-gray-900">{u.name}</p>
+                <p className="flex items-center gap-2 font-semibold text-gray-900">
+                  {u.name}
+                  {u.mustResetPassword && (
+                    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
+                      Reset pending
+                    </span>
+                  )}
+                </p>
                 <p className="text-gray-500">
                   {u.email} · {u.role}
                 </p>
               </div>
-              <button onClick={() => handleRemove(u.id)} className="text-sm font-medium text-gray-400 hover:text-red-600">
-                Remove
-              </button>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => handleResetPassword(u)}
+                  disabled={resettingId === u.id}
+                  className="text-[13px] font-semibold text-blue-600 hover:text-navy-700 disabled:opacity-50"
+                >
+                  Reset password
+                </button>
+                <button onClick={() => handleRemove(u.id)} className="text-sm font-medium text-gray-400 hover:text-red-600">
+                  Remove
+                </button>
+              </div>
             </li>
           ))}
         </ul>
