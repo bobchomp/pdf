@@ -209,27 +209,28 @@ export function FlipbookViewer({
     );
   }
 
-  if (!doc) {
-    return (
-      <div className="flex h-full min-h-[400px] items-center justify-center text-sm text-gray-400">
-        Loading flipbook…
-      </div>
-    );
-  }
+  // Stay on a plain white background until the book is actually ready to paint — themeColor,
+  // the toolbar, and the logo only appear once, avoiding a flash of color before there's
+  // anything on top of it.
+  const isReady = doc !== null && wrapperWidth !== null;
 
   return (
     <div
       ref={rootRef}
       className="relative flex h-full min-h-0 w-full flex-col items-center gap-2"
-      style={{
-        backgroundColor: themeColor,
-        backgroundImage: backgroundImageUrl ? `url("${backgroundImageUrl}")` : undefined,
-        backgroundSize: backgroundFit,
-        backgroundPosition,
-        backgroundRepeat: "no-repeat",
-      }}
+      style={
+        isReady
+          ? {
+              backgroundColor: themeColor,
+              backgroundImage: backgroundImageUrl ? `url("${backgroundImageUrl}")` : undefined,
+              backgroundSize: backgroundFit,
+              backgroundPosition,
+              backgroundRepeat: "no-repeat",
+            }
+          : { backgroundColor: "#ffffff" }
+      }
     >
-      {showToolbar && (
+      {showToolbar && isReady && (
         <div
           className="flex w-full shrink-0 items-center justify-between px-4 py-3 text-sm text-white/90"
           style={{ backgroundColor: themeColor }}
@@ -290,66 +291,70 @@ export function FlipbookViewer({
       )}
 
       <div ref={stageRef} className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-6 py-6 sm:px-12 sm:py-10">
-        <button
-          onClick={() => flipBookRef.current?.pageFlip()?.flipPrev()}
-          disabled={atFirstPage}
-          aria-label="Previous page"
-          className="absolute left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-0 sm:left-4"
-        >
-          <IconChevronLeft size={20} />
-        </button>
-        <button
-          onClick={() => flipBookRef.current?.pageFlip()?.flipNext()}
-          disabled={atLastPage}
-          aria-label="Next page"
-          className="absolute right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-0 sm:right-4"
-        >
-          <IconChevronRight size={20} />
-        </button>
+        {!isReady && <p className="text-sm text-gray-400">Loading flipbook…</p>}
 
-        {wrapperWidth && (
-          <div style={{ width: wrapperWidth, maxWidth: "100%" }}>
-            <HTMLFlipBook
-              key={pageCount}
-              ref={flipBookRef}
-              width={600}
-              height={Math.round(600 / pageAspect)}
-              size="stretch"
-              minWidth={200}
-              maxWidth={2200}
-              minHeight={280}
-              maxHeight={3000}
-              maxShadowOpacity={0.4}
-              showCover={true}
-              mobileScrollSupport={true}
-              className="shadow-2xl"
-              style={flipBookStyle}
-              startPage={0}
-              drawShadow={true}
-              flippingTime={500}
-              usePortrait={true}
-              startZIndex={0}
-              autoSize={true}
-              clickEventForward={true}
-              useMouseEvents={true}
-              swipeDistance={30}
-              showPageCorners={true}
-              disableFlipByClick={false}
-              onFlip={(e: { data: number }) => setCurrentPage(e.data)}
-              onInit={(e: { data: { mode: "portrait" | "landscape" } }) => setOrientation(e.data.mode)}
-              onChangeOrientation={(e: { data: "portrait" | "landscape" }) => setOrientation(e.data)}
+        {isReady && (
+          <>
+            <button
+              onClick={() => flipBookRef.current?.pageFlip()?.flipPrev()}
+              disabled={atFirstPage}
+              aria-label="Previous page"
+              className="absolute left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-0 sm:left-4"
             >
-              {pages.map((pageNumber) => (
-                <div key={pageNumber} className="bg-white">
-                  <PdfPage doc={doc} pageNumber={pageNumber} shouldRender={Math.abs(pageNumber - 1 - currentPage) <= RENDER_WINDOW} />
-                </div>
-              ))}
-            </HTMLFlipBook>
-          </div>
+              <IconChevronLeft size={20} />
+            </button>
+            <button
+              onClick={() => flipBookRef.current?.pageFlip()?.flipNext()}
+              disabled={atLastPage}
+              aria-label="Next page"
+              className="absolute right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-0 sm:right-4"
+            >
+              <IconChevronRight size={20} />
+            </button>
+
+            <div style={{ width: wrapperWidth, maxWidth: "100%" }}>
+              <HTMLFlipBook
+                key={pageCount}
+                ref={flipBookRef}
+                width={600}
+                height={Math.round(600 / pageAspect)}
+                size="stretch"
+                minWidth={200}
+                maxWidth={2200}
+                minHeight={280}
+                maxHeight={3000}
+                maxShadowOpacity={0.4}
+                showCover={true}
+                mobileScrollSupport={true}
+                className="shadow-2xl"
+                style={flipBookStyle}
+                startPage={0}
+                drawShadow={true}
+                flippingTime={500}
+                usePortrait={true}
+                startZIndex={0}
+                autoSize={true}
+                clickEventForward={true}
+                useMouseEvents={true}
+                swipeDistance={30}
+                showPageCorners={true}
+                disableFlipByClick={false}
+                onFlip={(e: { data: number }) => setCurrentPage(e.data)}
+                onInit={(e: { data: { mode: "portrait" | "landscape" } }) => setOrientation(e.data.mode)}
+                onChangeOrientation={(e: { data: "portrait" | "landscape" }) => setOrientation(e.data)}
+              >
+                {pages.map((pageNumber) => (
+                  <div key={pageNumber} className="bg-white">
+                    <PdfPage doc={doc!} pageNumber={pageNumber} shouldRender={Math.abs(pageNumber - 1 - currentPage) <= RENDER_WINDOW} />
+                  </div>
+                ))}
+              </HTMLFlipBook>
+            </div>
+          </>
         )}
       </div>
 
-      {logoUrl && (
+      {isReady && logoUrl && (
         <div className="absolute bottom-3 left-3 z-10">
           {logoLinkUrl ? (
             <a href={logoLinkUrl} target="_blank" rel="noopener noreferrer">

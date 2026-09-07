@@ -93,14 +93,14 @@ export function PublicFlipbook({ slug, embed = false }: { slug: string; embed?: 
 
   if (notFound) {
     return (
-      <div className="flex h-full min-h-screen items-center justify-center bg-gray-100 px-4 text-gray-500">
+      <div className="flex h-full min-h-screen items-center justify-center bg-white px-4 text-gray-500">
         This flipbook doesn&apos;t exist or isn&apos;t published.
       </div>
     );
   }
 
   if (!flipbook) {
-    return <div className="flex h-full min-h-screen items-center justify-center bg-gray-100 text-gray-400">Loading…</div>;
+    return <div className="flex h-full min-h-screen items-center justify-center bg-white text-gray-400">Loading…</div>;
   }
 
   if (!flipbook.unlocked) {
@@ -141,7 +141,7 @@ export function PublicFlipbook({ slug, embed = false }: { slug: string; embed?: 
   }
 
   if (!pdfUrl) {
-    return <div className="flex h-full min-h-screen items-center justify-center bg-navy-900 text-gray-400">Loading flipbook…</div>;
+    return <div className="flex h-full min-h-screen items-center justify-center bg-white text-gray-400">Loading flipbook…</div>;
   }
 
   return (
