@@ -47,6 +47,22 @@ export async function createUser(input: { email: string; password?: string; name
   return getUserById(id);
 }
 
+export async function updateUser(id: string, patch: { name?: string; email?: string; role?: "admin" | "member" }) {
+  const { email, ...rest } = patch;
+  if (email !== undefined) {
+    const existing = await getUserByEmail(email);
+    if (existing && existing.id !== id) {
+      throw new Error(`A user with email ${email} already exists.`);
+    }
+  }
+
+  await db
+    .update(schema.users)
+    .set({ ...rest, ...(email !== undefined ? { email: email.toLowerCase() } : {}) })
+    .where(eq(schema.users.id, id));
+  return getUserById(id);
+}
+
 export async function verifyPassword(email: string, password: string) {
   const user = await getUserByEmail(email);
   if (!user) return null;
