@@ -9,7 +9,6 @@ export function TeamManager({ users }: { users: User[] }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "member">("member");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -23,7 +22,7 @@ export function TeamManager({ users }: { users: User[] }) {
     const res = await fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, name, password, role }),
+      body: JSON.stringify({ email, name, role }),
     });
     const data = await res.json();
     setSubmitting(false);
@@ -33,7 +32,6 @@ export function TeamManager({ users }: { users: User[] }) {
     }
     setEmail("");
     setName("");
-    setPassword("");
     router.refresh();
   }
 
@@ -72,7 +70,10 @@ export function TeamManager({ users }: { users: User[] }) {
 
       <section className={`${cardClass} p-7`}>
         <h2 className="text-[13px] font-semibold text-gray-700">Add a teammate</h2>
-        <form onSubmit={handleAdd} className="mt-3 grid grid-cols-2 gap-3">
+        <p className="mt-1 text-xs text-gray-400">
+          Their password will be set to &quot;password&quot; — they&apos;ll be asked to choose their own the first time they sign in.
+        </p>
+        <form onSubmit={handleAdd} className="mt-3 grid grid-cols-3 gap-3">
           <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required className={inputClass} />
           <input
             type="email"
@@ -82,24 +83,15 @@ export function TeamManager({ users }: { users: User[] }) {
             required
             className={inputClass}
           />
-          <input
-            type="password"
-            placeholder="Temporary password (min 8 chars)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-            className={inputClass}
-          />
           <select value={role} onChange={(e) => setRole(e.target.value as "admin" | "member")} className={inputClass}>
             <option value="member">Member</option>
             <option value="admin">Admin</option>
           </select>
-          {error && <p className="col-span-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="col-span-3 text-sm text-red-600">{error}</p>}
           <button
             type="submit"
             disabled={submitting}
-            className="col-span-2 rounded-[9px] bg-navy-900 px-4 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:bg-navy-700 disabled:opacity-50"
+            className="col-span-3 rounded-[9px] bg-navy-900 px-4 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:bg-navy-700 disabled:opacity-50"
           >
             {submitting ? "Adding…" : "Add teammate"}
           </button>

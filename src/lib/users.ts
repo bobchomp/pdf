@@ -18,13 +18,22 @@ export async function listUsers() {
   return db.select().from(schema.users);
 }
 
-export async function createUser(input: { email: string; password: string; name: string; role?: "admin" | "member" }) {
+const RESET_PASSWORD = "password";
+
+/**
+ * If no password is given (the normal case — an admin adding a teammate from the Team page),
+ * the account starts on the known default password and is flagged for a forced reset on first
+ * login, same as an admin-triggered reset. Passing a password explicitly (e.g. the initial
+ * setup flow, where someone is choosing their own password right there) skips that.
+ */
+export async function createUser(input: { email: string; password?: string; name: string; role?: "admin" | "member" }) {
   const existing = await getUserByEmail(input.email);
   if (existing) {
     throw new Error(`A user with email ${input.email} already exists.`);
   }
 
-  const passwordHash = await bcrypt.hash(input.password, 12);
+  const requiresReset = input.password === undefined;
+  const passwordHash = await bcrypt.hash(input.password ?? RESET_PASSWORD, 12);
   const id = newId("usr");
   await db.insert(schema.users).values({
     id,
@@ -32,6 +41,7 @@ export async function createUser(input: { email: string; password: string; name:
     passwordHash,
     name: input.name,
     role: input.role ?? "member",
+    mustResetPassword: requiresReset,
     createdAt: new Date(),
   });
   return getUserById(id);
@@ -43,8 +53,6 @@ export async function verifyPassword(email: string, password: string) {
   const valid = await bcrypt.compare(password, user.passwordHash);
   return valid ? user : null;
 }
-
-const RESET_PASSWORD = "password";
 
 /** Sets a user's password to a known default and flags it for a forced reset on next login. */
 export async function resetUserPassword(id: string) {

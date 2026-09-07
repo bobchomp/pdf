@@ -22,7 +22,6 @@ export async function GET() {
 
 const schema = z.object({
   email: z.string().email(),
-  password: z.string().min(8).max(200),
   name: z.string().min(1).max(200),
   role: z.enum(["admin", "member"]).default("member"),
 });
