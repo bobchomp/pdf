@@ -299,7 +299,7 @@ export function FlipbookViewer({
               onClick={() => flipBookRef.current?.pageFlip()?.flipPrev()}
               disabled={atFirstPage}
               aria-label="Previous page"
-              className="absolute left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-0 sm:left-4"
+              className="absolute left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-gray-900/40 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-gray-900/60 disabled:opacity-0 sm:left-4"
             >
               <IconChevronLeft size={20} />
             </button>
@@ -307,7 +307,7 @@ export function FlipbookViewer({
               onClick={() => flipBookRef.current?.pageFlip()?.flipNext()}
               disabled={atLastPage}
               aria-label="Next page"
-              className="absolute right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-0 sm:right-4"
+              className="absolute right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-gray-900/40 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-gray-900/60 disabled:opacity-0 sm:right-4"
             >
               <IconChevronRight size={20} />
             </button>
