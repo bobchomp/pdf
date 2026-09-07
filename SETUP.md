@@ -111,21 +111,41 @@ openssl rand -base64 32
 Set the result as `AUTH_SECRET`. Set `NEXTAUTH_URL` to `http://localhost:3000` locally,
 and to your real deployed URL in production.
 
-## 5. Install and create the D1 tables
+## 5. Email (Resend) — for "forgot password" links
+
+Sign up at https://resend.com and create an API key at **API Keys > Create API Key**:
+
+```
+RESEND_API_KEY=<the key>
+```
+
+Emails need a `From` address on a domain you've verified with Resend (**Domains > Add
+Domain**, then add the DNS records it gives you). Once verified:
+
+```
+RESEND_FROM_EMAIL=noreply@yourdomain.com
+```
+
+Without a verified domain, Resend's shared `onboarding@resend.dev` sender only delivers
+to the email address of the Resend account owner — fine for a quick test, not for real
+teammates. If you skip this section entirely, everything else works fine; only the
+"Forgot password?" link on the login page won't be able to send emails.
+
+## 6. Install and create the D1 tables
 
 ```bash
 npm install
 npm run db:push          # creates the D1 tables (needs .env, see step 2)
 ```
 
-## 6. Deploying
+## 7. Deploying
 
 Push this repo to GitHub and import it in Vercel, or run `vercel deploy`. Add every
 variable from `.env.example` to the project's Environment Variables in the Vercel
 dashboard (production **and** preview if you use preview deployments), and update
 `NEXTAUTH_URL` and the R2 CORS `AllowedOrigins` to match your real domain.
 
-## 7. Create your first (admin) login
+## 8. Create your first (admin) login
 
 Visit `/setup` on your deployed app (e.g. `https://your-app.vercel.app/setup`) and fill
 in the form. This page only works **once** — the moment an account exists, it stops
@@ -149,7 +169,7 @@ step 2. If you hit `'tsx' is not recognized`, run `npm install` first. If you ge
 Cloudflare "Authentication error", double check `.env` has no quotes, no stray angle
 brackets left over from a placeholder, and the exact token/IDs from steps 1–2.
 
-## 8. Run it locally (optional)
+## 9. Run it locally (optional)
 
 ```bash
 npm run dev

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { loginAction } from "./actions";
 
 const inputClass =
@@ -22,9 +23,14 @@ export function LoginForm() {
         <input id="email" name="email" type="email" required autoComplete="email" className={inputClass} />
       </div>
       <div>
-        <label htmlFor="password" className="block text-[13px] font-semibold text-gray-700">
-          Password
-        </label>
+        <div className="flex items-center justify-between">
+          <label htmlFor="password" className="block text-[13px] font-semibold text-gray-700">
+            Password
+          </label>
+          <Link href="/forgot-password" className="text-[13px] font-semibold text-blue-600 hover:text-navy-700">
+            Forgot password?
+          </Link>
+        </div>
         <input
           id="password"
           name="password"
