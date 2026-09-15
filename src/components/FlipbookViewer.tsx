@@ -6,6 +6,7 @@ import Image from "next/image";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { loadPdf } from "@/lib/pdf-client";
 import { PdfPage } from "@/components/PdfPage";
+import { PdfZoomOverlay } from "@/components/PdfZoomOverlay";
 import { IconChevronLeft, IconChevronRight, IconDownload, IconPrint, IconFullscreen } from "@/components/icons";
 
 const HTMLFlipBook = dynamic(() => import("react-pageflip"), { ssr: false }) as unknown as React.ComponentType<
@@ -75,6 +76,7 @@ export function FlipbookViewer({
   const [pageAspect, setPageAspect] = useState(DEFAULT_PAGE_ASPECT);
   const [wrapperWidth, setWrapperWidth] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [zoom, setZoom] = useState<{ pageNumber: number; focus: { xPct: number; yPct: number } } | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const flipBookRef = useRef<{ pageFlip: () => PageFlipController } | null>(null);
@@ -145,6 +147,60 @@ export function FlipbookViewer({
   useEffect(() => {
     flipBookRef.current?.pageFlip()?.update();
   }, [wrapperWidth]);
+
+  // Double-tap to zoom. Attached as a native listener (not a React synthetic handler) directly
+  // on the stage, in the capture phase — react-pageflip reparents page nodes internally for its
+  // flip animation, so a per-page React handler can't reliably win the propagation race against
+  // its own native listeners, but this real DOM ancestor is guaranteed to see the event first.
+  //
+  // Listening on touchstart (not touchend) matters: react-pageflip commits to a flip as soon as
+  // a tap's touchstart lands, queuing it to complete even if the corresponding touchend is later
+  // blocked — so the second tap of a double-tap has to be stopped before react-pageflip's own
+  // touchstart handler ever sees it, not after.
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+
+    let lastTap: { time: number; x: number; y: number } | null = null;
+
+    function handleTouchStart(e: TouchEvent) {
+      const touch = e.touches[0];
+      if (!touch) return;
+
+      const now = Date.now();
+      const isDoubleTap =
+        !!lastTap && now - lastTap.time < 350 && Math.hypot(touch.clientX - lastTap.x, touch.clientY - lastTap.y) < 40;
+
+      if (!isDoubleTap) {
+        lastTap = { time: now, x: touch.clientX, y: touch.clientY };
+        return;
+      }
+
+      lastTap = null;
+      // react-pageflip overlays its own decorative siblings (e.g. a shadow div) on top of the
+      // actual page content during a flip, so the literal event target often isn't a descendant
+      // of our page element — check the whole stack of elements at this point instead.
+      const pageEl = document
+        .elementsFromPoint(touch.clientX, touch.clientY)
+        .map((el) => el.closest<HTMLElement>("[data-page-number]"))
+        .find((el): el is HTMLElement => el !== null);
+      if (!pageEl) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      const rect = pageEl.getBoundingClientRect();
+      setZoom({
+        pageNumber: Number(pageEl.dataset.pageNumber),
+        focus: {
+          xPct: ((touch.clientX - rect.left) / rect.width) * 100,
+          yPct: ((touch.clientY - rect.top) / rect.height) * 100,
+        },
+      });
+    }
+
+    el.addEventListener("touchstart", handleTouchStart, { capture: true });
+    return () => el.removeEventListener("touchstart", handleTouchStart, { capture: true });
+  }, []);
 
   // Record the opening page as viewed once the book is ready — onFlip only fires on later
   // flips, so without this the page-engagement funnel would never show anyone reaching page 1.
@@ -391,6 +447,10 @@ export function FlipbookViewer({
           </>
         )}
       </div>
+
+      {zoom && doc && (
+        <PdfZoomOverlay doc={doc} pageNumber={zoom.pageNumber} focus={zoom.focus} onClose={() => setZoom(null)} />
+      )}
 
       {isReady && logoUrl && (
         <div className="absolute bottom-3 left-3 z-10">

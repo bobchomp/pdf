@@ -49,7 +49,11 @@ export function PdfPage({
   }, [shouldRender, rendered, doc, pageNumber]);
 
   return (
-    <div className="relative flex h-full w-full items-center justify-center bg-white">
+    // data-page-number lets a stage-level double-tap listener identify which page was tapped,
+    // since react-pageflip can reparent these nodes internally for its flip animation — a
+    // per-page React event handler can't reliably win the propagation race against its own
+    // native listeners, but a single ancestor-level capture listener always fires first.
+    <div className="relative flex h-full w-full items-center justify-center bg-white" data-page-number={pageNumber}>
       {/*
         The canvas is rendered at this page's own real aspect ratio, which can differ slightly
         from the book's overall box (derived from page 1). Locking this wrapper to that same

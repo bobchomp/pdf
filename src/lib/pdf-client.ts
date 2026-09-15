@@ -4,8 +4,33 @@ import * as pdfjsLib from "pdfjs-dist";
 
 let workerConfigured = false;
 
+// pdfjs-dist's main-thread code (the worker-message bookkeeping in particular) calls the very
+// new Map.prototype.getOrInsertComputed/getOrInsert, which not every browser in the wild ships
+// yet — without it, every page render throws and gets swallowed by this module's own callers,
+// so PDFs silently never appear. A tiny, spec-accurate shim costs nothing where it's natively
+// supported and keeps rendering working everywhere else.
+function ensureMapUpsertPolyfills() {
+  const proto = Map.prototype as Map<unknown, unknown> & {
+    getOrInsertComputed?: (key: unknown, fn: (key: unknown) => unknown) => unknown;
+    getOrInsert?: (key: unknown, value: unknown) => unknown;
+  };
+  if (!proto.getOrInsertComputed) {
+    proto.getOrInsertComputed = function (this: Map<unknown, unknown>, key, fn) {
+      if (!this.has(key)) this.set(key, fn(key));
+      return this.get(key);
+    };
+  }
+  if (!proto.getOrInsert) {
+    proto.getOrInsert = function (this: Map<unknown, unknown>, key, value) {
+      if (!this.has(key)) this.set(key, value);
+      return this.get(key);
+    };
+  }
+}
+
 function ensureWorker() {
   if (workerConfigured) return;
+  ensureMapUpsertPolyfills();
   pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
   workerConfigured = true;
 }
