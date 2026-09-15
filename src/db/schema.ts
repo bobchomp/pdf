@@ -97,6 +97,12 @@ export const flipbookViews = sqliteTable("flipbook_views", {
     .default("direct"),
 });
 
+export const rateLimits = sqliteTable("rate_limits", {
+  bucketKey: text("bucket_key").primaryKey(),
+  count: integer("count").notNull().default(0),
+  windowStart: integer("window_start", { mode: "timestamp" }).notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type Flipbook = typeof flipbooks.$inferSelect;
 export type FlipbookView = typeof flipbookViews.$inferSelect;

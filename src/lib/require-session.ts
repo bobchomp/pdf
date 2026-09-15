@@ -6,6 +6,9 @@ export async function requireSession() {
   if (!session?.user) {
     return { session: null, error: Response.json({ error: "Unauthorized" }, { status: 401 }) };
   }
+  if (session.user.mustResetPassword) {
+    return { session: null, error: Response.json({ error: "Password reset required" }, { status: 403 }) };
+  }
   return { session, error: null };
 }
 

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getFlipbookBySlug, verifyFlipbookPassword } from "@/lib/flipbooks";
 import { createFlipbookAccessToken, flipbookAccessCookieName } from "@/lib/access-token";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({ password: z.string().min(1).max(200) });
 
@@ -12,6 +13,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
 
   if (!flipbook.isPrivate) {
     return Response.json({ ok: true });
+  }
+
+  const allowed = await checkRateLimit(`unlock:${flipbook.id}`, 10, 15 * 60);
+  if (!allowed) {
+    return Response.json({ error: "Too many attempts. Try again in a few minutes." }, { status: 429 });
   }
 
   const body = await req.json().catch(() => null);
