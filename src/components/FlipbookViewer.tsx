@@ -41,6 +41,7 @@ function coverShiftDirection(currentPage: number, pageCount: number): "left" | "
 
 export function FlipbookViewer({
   pdfUrl,
+  viewId,
   pageCount,
   title,
   themeColor,
@@ -54,6 +55,7 @@ export function FlipbookViewer({
   allowPrint,
 }: {
   pdfUrl: string;
+  viewId?: string | null;
   pageCount: number;
   title: string;
   themeColor: string;
@@ -144,6 +146,19 @@ export function FlipbookViewer({
     flipBookRef.current?.pageFlip()?.update();
   }, [wrapperWidth]);
 
+  // Record the opening page as viewed once the book is ready — onFlip only fires on later
+  // flips, so without this the page-engagement funnel would never show anyone reaching page 1.
+  const recordedInitialPageRef = useRef(false);
+  useEffect(() => {
+    if (recordedInitialPageRef.current || doc === null || wrapperWidth === null || !viewId) return;
+    recordedInitialPageRef.current = true;
+    fetch("/api/public/page-events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ viewId, pageNumber: 1 }),
+    }).catch(() => {});
+  }, [doc, wrapperWidth, viewId]);
+
   // Left/right arrow keys flip pages, unless the user is typing somewhere (e.g. the password
   // form on a private flipbook, or — for an embed — some other field on the host page).
   useEffect(() => {
@@ -191,6 +206,15 @@ export function FlipbookViewer({
     transition: "transform 300ms ease",
     transform: shift === "left" ? "translateX(-25%) translateZ(0)" : shift === "right" ? "translateX(25%) translateZ(0)" : "translateZ(0)",
   };
+
+  function recordPageFlip(pageNumber: number) {
+    if (!viewId) return;
+    fetch("/api/public/page-events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ viewId, pageNumber }),
+    }).catch(() => {});
+  }
 
   function handleDownload() {
     const a = document.createElement("a");
@@ -345,13 +369,21 @@ export function FlipbookViewer({
                 swipeDistance={30}
                 showPageCorners={false}
                 disableFlipByClick={false}
-                onFlip={(e: { data: number }) => setCurrentPage(e.data)}
+                onFlip={(e: { data: number }) => {
+                  setCurrentPage(e.data);
+                  recordPageFlip(e.data + 1);
+                }}
                 onInit={(e: { data: { mode: "portrait" | "landscape" } }) => setOrientation(e.data.mode)}
                 onChangeOrientation={(e: { data: "portrait" | "landscape" }) => setOrientation(e.data)}
               >
                 {pages.map((pageNumber) => (
                   <div key={pageNumber} className="bg-white">
-                    <PdfPage doc={doc!} pageNumber={pageNumber} shouldRender={Math.abs(pageNumber - 1 - currentPage) <= RENDER_WINDOW} />
+                    <PdfPage
+                      doc={doc!}
+                      pageNumber={pageNumber}
+                      shouldRender={Math.abs(pageNumber - 1 - currentPage) <= RENDER_WINDOW}
+                      viewId={viewId}
+                    />
                   </div>
                 ))}
               </HTMLFlipBook>

@@ -8,10 +8,12 @@ export function PdfPage({
   doc,
   pageNumber,
   shouldRender,
+  viewId,
 }: {
   doc: PDFDocumentProxy;
   pageNumber: number;
   shouldRender: boolean;
+  viewId?: string | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [rendered, setRendered] = useState(false);
@@ -78,6 +80,14 @@ export function PdfPage({
               top: `${link.topPct}%`,
               width: `${link.widthPct}%`,
               height: `${link.heightPct}%`,
+            }}
+            onClick={() => {
+              if (!viewId) return;
+              fetch("/api/public/link-clicks", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ viewId, pageNumber, url: link.url }),
+              }).catch(() => {});
             }}
           />
         ))}

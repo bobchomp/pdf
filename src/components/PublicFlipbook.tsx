@@ -28,6 +28,7 @@ type PublicFlipbook = {
 export function PublicFlipbook({ slug, embed = false }: { slug: string; embed?: boolean }) {
   const [flipbook, setFlipbook] = useState<PublicFlipbook | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [viewId, setViewId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [password, setPassword] = useState("");
   const [unlockError, setUnlockError] = useState<string | null>(null);
@@ -63,7 +64,10 @@ export function PublicFlipbook({ slug, embed = false }: { slug: string; embed?: 
     fetch(`/api/public/flipbooks/${slug}/pdf-url${embed ? "?source=embed" : ""}`)
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled && data.url) setPdfUrl(data.url);
+        if (!cancelled && data.url) {
+          setPdfUrl(data.url);
+          setViewId(data.viewId ?? null);
+        }
       });
     return () => {
       cancelled = true;
@@ -148,6 +152,7 @@ export function PublicFlipbook({ slug, embed = false }: { slug: string; embed?: 
     <div className="h-dvh w-full overflow-hidden">
       <FlipbookViewer
         pdfUrl={pdfUrl}
+        viewId={viewId}
         pageCount={flipbook.pageCount}
         title={flipbook.title}
         themeColor={flipbook.themeColor}

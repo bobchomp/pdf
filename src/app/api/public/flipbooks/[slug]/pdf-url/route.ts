@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getFlipbookBySlug, recordView } from "@/lib/flipbooks";
 import { flipbookAccessCookieName, verifyFlipbookAccessToken } from "@/lib/access-token";
 import { createPresignedGetUrl } from "@/lib/r2";
+import { getGeoFromHeaders } from "@/lib/geo";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -22,8 +23,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   const source = req.nextUrl.searchParams.get("source") === "embed" ? "embed" : "direct";
   const referrer = req.headers.get("referer") ?? "";
-  await recordView(flipbook.id, referrer, source);
+  const { country, region } = getGeoFromHeaders(req.headers);
+  const viewId = await recordView(flipbook.id, referrer, source, {
+    userAgent: req.headers.get("user-agent"),
+    country,
+    region,
+  });
 
   const url = await createPresignedGetUrl(flipbook.r2Key, 900);
-  return Response.json({ url, allowDownload: flipbook.allowDownload, allowPrint: flipbook.allowPrint });
+  return Response.json({ url, allowDownload: flipbook.allowDownload, allowPrint: flipbook.allowPrint, viewId });
 }

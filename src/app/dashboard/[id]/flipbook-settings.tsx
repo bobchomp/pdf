@@ -35,7 +35,6 @@ type Flipbook = {
   presetId: string | null;
 };
 
-type Stats = { totalViews: number; last30Days: { date: string; count: number }[] };
 type ImageField = "backgroundImageR2Key" | "logoR2Key";
 type PresetSummary = { id: string; name: string; isDefault: boolean };
 
@@ -55,7 +54,6 @@ export function FlipbookSettings({
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [stats, setStats] = useState<Stats | null>(null);
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(initialBackgroundImageUrl);
   const [uploadingBackground, setUploadingBackground] = useState(false);
   const [logoUrl, setLogoUrl] = useState(initialLogoUrl);
@@ -64,12 +62,6 @@ export function FlipbookSettings({
   const [origin] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
   const [presets, setPresets] = useState<PresetSummary[] | null>(null);
   const [applyingPreset, setApplyingPreset] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/flipbooks/${flipbook.id}/stats`)
-      .then((r) => r.json())
-      .then((d) => setStats(d.stats));
-  }, [flipbook.id]);
 
   useEffect(() => {
     fetch("/api/presets")
@@ -203,8 +195,6 @@ export function FlipbookSettings({
     patch({ logoLinkUrl: normalized || null });
   }
 
-  const maxCount = Math.max(1, ...(stats?.last30Days.map((d) => d.count) ?? [1]));
-
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <div className="flex items-center justify-between">
@@ -215,6 +205,9 @@ export function FlipbookSettings({
           </p>
         </div>
         <div className="flex gap-2.5">
+          <Link href={`/dashboard/stats/${flipbook.id}`} className={outlineButtonClass}>
+            Stats
+          </Link>
           <a href={`/f/${flipbook.slug}`} target="_blank" className={outlineButtonClass}>
             View
           </a>
@@ -551,31 +544,6 @@ export function FlipbookSettings({
         </div>
       </section>
 
-      <section className="rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]">
-        <h2 className="text-[15px] font-semibold text-navy-900">Analytics</h2>
-        {stats ? (
-          <div className="mt-4">
-            <p className="text-[30px] font-bold text-navy-900">{stats.totalViews}</p>
-            <p className="text-xs text-gray-400">total views</p>
-            <div className="mt-5 flex h-24 items-end gap-1">
-              {stats.last30Days.length === 0 ? (
-                <p className="text-xs text-gray-300">No views in the last 30 days.</p>
-              ) : (
-                stats.last30Days.map((d) => (
-                  <div
-                    key={d.date}
-                    title={`${d.date}: ${d.count}`}
-                    className="flex-1 rounded-t-[3px] bg-blue-100"
-                    style={{ height: `${(d.count / maxCount) * 100}%`, minHeight: 2 }}
-                  />
-                ))
-              )}
-            </div>
-          </div>
-        ) : (
-          <p className="mt-2 text-sm text-gray-400">Loading…</p>
-        )}
-      </section>
     </div>
   );
 }
