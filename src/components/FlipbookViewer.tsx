@@ -118,8 +118,14 @@ export function FlipbookViewer({
     if (!el) return;
 
     function recompute() {
-      const availW = el!.clientWidth;
-      const availH = el!.clientHeight;
+      // clientWidth/clientHeight include this element's own padding, but the book itself is an
+      // unconstrained child that will happily grow to fill that entire box — so left unadjusted,
+      // it renders straight through the padding instead of leaving it as visible breathing room.
+      const style = getComputedStyle(el!);
+      const paddingX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      const paddingY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+      const availW = el!.clientWidth - paddingX;
+      const availH = el!.clientHeight - paddingY;
       if (availW <= 0 || availH <= 0) return;
       // Assumes a two-page landscape spread (the common case); on narrow screens the library
       // falls back to single-page portrait mode on its own once the width is small enough.
