@@ -188,6 +188,24 @@ export function FlipbookSettings({
     }
   }
 
+  async function regenerateLink() {
+    if (!confirm("Generate a new public link? The old link will stop working immediately.")) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/flipbooks/${flipbook.id}/regenerate-link`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setFlipbook((prev) => ({ ...prev, ...data.flipbook }));
+        setMessage("New public link generated.");
+      } else {
+        setMessage(data.error ?? "Failed to generate a new link.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function saveLogoLink() {
     const trimmed = logoLinkDraft.trim();
     const normalized = trimmed && !/^https?:\/\//i.test(trimmed) ? `https://${trimmed}` : trimmed;
@@ -258,7 +276,12 @@ export function FlipbookSettings({
         <h2 className="text-[15px] font-semibold text-navy-900">Share</h2>
         <div className="mt-4 space-y-4">
           <div>
-            <label className="text-[12.5px] font-semibold text-gray-400">Public link</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[12.5px] font-semibold text-gray-400">Public link</label>
+              <button onClick={regenerateLink} disabled={saving} className="text-[13px] font-semibold text-blue-600 hover:text-navy-700">
+                Generate new link
+              </button>
+            </div>
             <div className="mt-1.5 flex gap-2">
               <input readOnly value={publicUrl} className={`w-full bg-gray-50 ${inputClass}`} />
               <button onClick={() => copy(publicUrl)} className={outlineButtonClass}>

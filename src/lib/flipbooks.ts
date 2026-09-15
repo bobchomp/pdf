@@ -92,6 +92,14 @@ export async function updateFlipbook(id: string, patch: FlipbookSettingsPatch) {
   return getFlipbookById(id);
 }
 
+export async function regenerateFlipbookSlug(id: string) {
+  await db
+    .update(schema.flipbooks)
+    .set({ slug: newSlug(), updatedAt: new Date() })
+    .where(eq(schema.flipbooks.id, id));
+  return getFlipbookById(id);
+}
+
 export async function setFlipbookPassword(id: string, password: string | null) {
   const passwordHash = password ? await bcrypt.hash(password, 12) : null;
   await db
