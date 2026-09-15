@@ -262,10 +262,10 @@ export function FlipbookViewer({
     >
       {showToolbar && isReady && (
         <div
-          className="flex w-full shrink-0 items-center justify-between px-4 py-3 text-sm text-white/90"
+          className="flex w-full shrink-0 items-center justify-end px-4 py-3 text-sm text-white/90 sm:justify-between"
           style={{ backgroundColor: themeColor }}
         >
-          <span className="truncate font-medium">{title}</span>
+          <span className="hidden truncate font-medium sm:inline">{title}</span>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
               <button
