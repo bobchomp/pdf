@@ -1,6 +1,6 @@
 import "server-only";
 import bcrypt from "bcryptjs";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte } from "drizzle-orm";
 import { db, schema } from "@/db/client";
 import { newId, newSlug } from "@/lib/ids";
 import { deleteObject } from "@/lib/r2";
@@ -41,9 +41,17 @@ export async function createDraftFlipbook(input: {
     updatedAt: now,
   });
 
+  // Best-effort: applying the default preset is a convenience, not the point of uploading a
+  // PDF. A failure here (e.g. a transient R2 error copying its background/logo image) shouldn't
+  // fail the whole upload — the flipbook still gets created with factory defaults, and a preset
+  // can always be applied afterward from its settings page.
   const defaultPreset = await getDefaultPreset();
   if (defaultPreset) {
-    await applyPresetToFlipbook(id, defaultPreset.id);
+    try {
+      await applyPresetToFlipbook(id, defaultPreset.id);
+    } catch (err) {
+      console.error(`Failed to apply default preset to new flipbook ${id}:`, err);
+    }
   }
 
   return getFlipbookById(id);
@@ -122,10 +130,11 @@ export async function recordView(flipbookId: string, referrer: string, source: "
 }
 
 export async function getViewStats(flipbookId: string) {
-  const all = await db
-    .select()
+  const totalRows = await db
+    .select({ value: count() })
     .from(schema.flipbookViews)
     .where(eq(schema.flipbookViews.flipbookId, flipbookId));
+  const totalViews = totalRows[0]?.value ?? 0;
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const recent = await db
@@ -140,9 +149,9 @@ export async function getViewStats(flipbookId: string) {
   }
 
   return {
-    totalViews: all.length,
+    totalViews,
     last30Days: Array.from(byDay.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, count]) => ({ date, count })),
+      .map(([date, dayCount]) => ({ date, count: dayCount })),
   };
 }

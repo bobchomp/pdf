@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db/client";
 import { newId } from "@/lib/ids";
+import { AppError } from "@/lib/errors";
 
 export async function getUserByEmail(email: string) {
   const rows = await db.select().from(schema.users).where(eq(schema.users.email, email.toLowerCase())).limit(1);
@@ -29,7 +30,7 @@ const RESET_PASSWORD = "password";
 export async function createUser(input: { email: string; password?: string; name: string; role?: "admin" | "member" }) {
   const existing = await getUserByEmail(input.email);
   if (existing) {
-    throw new Error(`A user with email ${input.email} already exists.`);
+    throw new AppError(`A user with email ${input.email} already exists.`);
   }
 
   const requiresReset = input.password === undefined;
@@ -52,7 +53,7 @@ export async function updateUser(id: string, patch: { name?: string; email?: str
   if (email !== undefined) {
     const existing = await getUserByEmail(email);
     if (existing && existing.id !== id) {
-      throw new Error(`A user with email ${email} already exists.`);
+      throw new AppError(`A user with email ${email} already exists.`);
     }
   }
 

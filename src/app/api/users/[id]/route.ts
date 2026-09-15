@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/require-session";
 import { db, schema } from "@/db/client";
 import { getUserById, updateUser } from "@/lib/users";
+import { AppError } from "@/lib/errors";
 
 const patchSchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -33,7 +34,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const user = await updateUser(id, parsed.data);
     return Response.json({ user: { id: user?.id, email: user?.email, name: user?.name, role: user?.role } });
   } catch (err) {
-    return Response.json({ error: err instanceof Error ? err.message : "Failed to update user" }, { status: 400 });
+    console.error(`PATCH /api/users/${id} failed:`, err);
+    return Response.json({ error: err instanceof AppError ? err.message : "Failed to update user." }, { status: 400 });
   }
 }
 

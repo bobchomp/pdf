@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireSession } from "@/lib/require-session";
 import { getFlipbookById } from "@/lib/flipbooks";
-import { createPresignedUploadUrl, flipbookCoverKey } from "@/lib/r2";
+import { createPresignedUploadUrl, flipbookCoverKey, isAllowedImageContentType } from "@/lib/r2";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error } = await requireSession();
@@ -14,6 +14,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const body = await req.json().catch(() => ({}));
   const filename = typeof body.filename === "string" ? body.filename : "cover.jpg";
   const contentType = typeof body.contentType === "string" ? body.contentType : "image/jpeg";
+  if (!isAllowedImageContentType(contentType)) {
+    return Response.json({ error: "Only image uploads are allowed." }, { status: 400 });
+  }
 
   const key = flipbookCoverKey(id, filename);
   const uploadUrl = await createPresignedUploadUrl(key, contentType);

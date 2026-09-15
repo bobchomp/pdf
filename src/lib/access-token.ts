@@ -1,10 +1,12 @@
 import "server-only";
 import crypto from "node:crypto";
 
-const SECRET = process.env.AUTH_SECRET ?? "";
-
 function sign(value: string) {
-  return crypto.createHmac("sha256", SECRET).update(value).digest("hex");
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) {
+    throw new Error("AUTH_SECRET is not configured — cannot sign flipbook access tokens. See SETUP.md.");
+  }
+  return crypto.createHmac("sha256", secret).update(value).digest("hex");
 }
 
 /** Token proving a visitor supplied the correct password for a private flipbook. */

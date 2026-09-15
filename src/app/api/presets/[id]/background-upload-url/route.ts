@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireSession } from "@/lib/require-session";
 import { getPresetById } from "@/lib/presets";
-import { createPresignedUploadUrl, presetBackgroundKey } from "@/lib/r2";
+import { createPresignedUploadUrl, presetBackgroundKey, isAllowedImageContentType } from "@/lib/r2";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error } = await requireSession();
@@ -14,6 +14,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const body = await req.json().catch(() => ({}));
   const filename = typeof body.filename === "string" ? body.filename : "background.jpg";
   const contentType = typeof body.contentType === "string" ? body.contentType : "image/jpeg";
+  if (!isAllowedImageContentType(contentType)) {
+    return Response.json({ error: "Only image uploads are allowed." }, { status: 400 });
+  }
 
   const key = presetBackgroundKey(id, filename);
   const uploadUrl = await createPresignedUploadUrl(key, contentType);

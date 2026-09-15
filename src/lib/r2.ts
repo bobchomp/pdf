@@ -31,6 +31,13 @@ export function r2Client(): S3Client {
   return _client;
 }
 
+/** Whether a client-supplied content type is safe to accept for an image upload (background,
+ * logo, cover). Presigned uploads otherwise trust whatever the browser claims, which would let
+ * an authenticated caller store arbitrary content under an image-looking key. */
+export function isAllowedImageContentType(contentType: string): boolean {
+  return /^image\/[a-zA-Z0-9.+-]+$/.test(contentType);
+}
+
 /** Presigned URL the browser can PUT the file to directly, bypassing our server. */
 export async function createPresignedUploadUrl(key: string, contentType: string, expiresInSeconds = 600) {
   const command = new PutObjectCommand({
