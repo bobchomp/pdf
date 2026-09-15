@@ -38,7 +38,7 @@ export async function createDraftFlipbook(input: {
   const now = new Date();
   await db.insert(schema.flipbooks).values({
     id,
-    slug: newSlug(input.title),
+    slug: newSlug(),
     ownerId: input.ownerId,
     title: input.title,
     originalFilename: input.originalFilename,

@@ -8,12 +8,6 @@ export function newId(prefix: string) {
   return `${prefix}_${nano()}`;
 }
 
-export function newSlug(title: string) {
-  const base = title
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
-    .slice(0, 40);
-  return `${base || "flipbook"}-${slugNano()}`;
+export function newSlug() {
+  return slugNano();
 }
