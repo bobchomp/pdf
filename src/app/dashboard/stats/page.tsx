@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { listFlipbooks } from "@/lib/flipbooks";
 import { createPresignedGetUrl } from "@/lib/r2";
 import { IconImage } from "@/components/icons";
+
+export const metadata: Metadata = { title: "Stats" };
 
 export default async function StatsIndexPage() {
   const flipbooks = await listFlipbooks();

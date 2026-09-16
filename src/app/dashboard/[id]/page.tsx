@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getFlipbookById } from "@/lib/flipbooks";
 import { createPresignedGetUrl } from "@/lib/r2";
 import { FlipbookSettings } from "./flipbook-settings";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const flipbook = await getFlipbookById(id);
+  return { title: flipbook?.title ?? "Flipbook" };
+}
 
 export default async function FlipbookDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

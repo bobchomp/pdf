@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { listFlipbooks } from "@/lib/flipbooks";
 import { createPresignedGetUrl } from "@/lib/r2";
 import { IconImage, IconLock, IconPlus } from "@/components/icons";
+
+export const metadata: Metadata = { title: "My flipbooks" };
 
 function statusBadge(status: string) {
   if (status === "ready") return "bg-green-100 text-green-700";

@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { Logo } from "@/components/Logo";
 import { ConfirmResetForm } from "./confirm-reset-form";
+
+export const metadata: Metadata = { title: "Reset password" };
 
 export default async function ConfirmResetPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
   const { token } = await searchParams;

@@ -10,7 +10,10 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Smithton Church Newsletter",
+  title: {
+    template: "%s | Smithton Church Newsletter",
+    default: "Smithton Church Newsletter",
+  },
   description: "Smithton Church's digital newsletter, hosted online.",
 };
 

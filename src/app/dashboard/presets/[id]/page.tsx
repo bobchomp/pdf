@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPresetById } from "@/lib/presets";
 import { createPresignedGetUrl } from "@/lib/r2";
 import { PresetSettings } from "./preset-settings";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const preset = await getPresetById(id);
+  return { title: preset?.name ?? "Preset" };
+}
 
 export default async function PresetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

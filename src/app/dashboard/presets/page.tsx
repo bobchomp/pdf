@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { listPresets } from "@/lib/presets";
 import { IconPlus } from "@/components/icons";
 import { PresetsList } from "./presets-list";
+
+export const metadata: Metadata = { title: "Presets" };
 
 export default async function PresetsPage() {
   const presets = await listPresets();
