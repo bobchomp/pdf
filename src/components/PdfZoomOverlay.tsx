@@ -4,16 +4,23 @@ import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { renderPageToCanvas, type PdfPageLink } from "@/lib/pdf-client";
 
-const ZOOM_WIDTH_PCT = 220;
+// How much bigger than its size in the book the zoomed page is shown. Relative to the page
+// rather than the screen, so a wide desktop viewer doesn't blow a page up several times over.
+const ZOOM_FACTOR = 2.5;
+// Caps the sharp re-render's pixel count; phones in particular limit total canvas memory.
+const MAX_RENDER_SCALE = 3;
 
 export function PdfZoomOverlay({
   doc,
   pageNumber,
+  pageWidth,
   focus,
   onClose,
 }: {
   doc: PDFDocumentProxy;
   pageNumber: number;
+  /** The page's on-screen width in the book, in CSS pixels. */
+  pageWidth: number;
   focus: { xPct: number; yPct: number };
   onClose: () => void;
 }) {
@@ -21,19 +28,18 @@ export function PdfZoomOverlay({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [links, setLinks] = useState<PdfPageLink[]>([]);
+  const zoomedWidth = Math.round(pageWidth * ZOOM_FACTOR);
 
   useEffect(() => {
     let cancelled = false;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // The page's own view already has this page rendered (that's how a double-tap could land
-    // on it) and its clickable links parsed — reuse both directly rather than asking pdf.js to
-    // render and parse the same page a second time, which races the page's own in-flight work
-    // and can throw deep inside pdf.js's page cache.
+    // Show the book's already-rendered copy of this page instantly, then swap in a sharper
+    // render sized for the zoomed view — the book's copy is rendered for its own, much smaller
+    // on-screen size and would look soft blown up.
     const sourceRoot = document.querySelector<HTMLElement>(`[data-page-number="${pageNumber}"]`);
     const sourceCanvas = sourceRoot?.querySelector("canvas");
-
     if (sourceCanvas && sourceCanvas.width > 0) {
       canvas.width = sourceCanvas.width;
       canvas.height = sourceCanvas.height;
@@ -41,16 +47,26 @@ export function PdfZoomOverlay({
       queueMicrotask(() => {
         if (!cancelled) setReady(true);
       });
-    } else {
-      renderPageToCanvas(doc, pageNumber, canvas, 2)
-        .then(() => {
-          if (!cancelled) setReady(true);
-        })
-        .catch(() => {
-          // leave the loading state; nothing more to show
-        });
     }
 
+    doc
+      .getPage(pageNumber)
+      .then(async (page) => {
+        const baseWidth = page.getViewport({ scale: 1 }).width;
+        const scale = Math.min(MAX_RENDER_SCALE, (zoomedWidth * window.devicePixelRatio) / baseWidth);
+        const sharp = document.createElement("canvas");
+        await renderPageToCanvas(doc, pageNumber, sharp, scale);
+        if (cancelled) return;
+        canvas.width = sharp.width;
+        canvas.height = sharp.height;
+        canvas.getContext("2d")?.drawImage(sharp, 0, 0);
+        setReady(true);
+      })
+      .catch(() => {
+        // keep whatever is already showing (the book's copy, or the loading state)
+      });
+
+    // The book's copy of the page has already parsed its clickable links; reuse them.
     const sourceLinks = sourceRoot ? Array.from(sourceRoot.querySelectorAll<HTMLAnchorElement>("a[href]")) : [];
     setLinks(
       sourceLinks.map((a) => ({
@@ -65,9 +81,9 @@ export function PdfZoomOverlay({
     return () => {
       cancelled = true;
     };
-  }, [doc, pageNumber]);
+  }, [doc, pageNumber, zoomedWidth]);
 
-  // Scroll so the point the visitor double-tapped ends up centered, rather than always
+  // Scroll so the point that was tapped/clicked ends up centered, rather than always
   // opening on the middle of the page.
   useEffect(() => {
     if (!ready || !scrollRef.current) return;
@@ -75,6 +91,14 @@ export function PdfZoomOverlay({
     el.scrollLeft = Math.max(0, (focus.xPct / 100) * el.scrollWidth - el.clientWidth / 2);
     el.scrollTop = Math.max(0, (focus.yPct / 100) * el.scrollHeight - el.clientHeight / 2);
   }, [ready, focus]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   return (
     <div className="absolute inset-0 z-40 bg-black/95">
@@ -86,13 +110,15 @@ export function PdfZoomOverlay({
         ✕
       </button>
 
-      <div ref={scrollRef} onClick={onClose} className="h-full w-full overflow-auto">
-        <div
-          className="flex min-h-full items-center justify-center py-8"
-          style={{ width: `${ZOOM_WIDTH_PCT}%`, minWidth: "100%" }}
-        >
-          <div className="relative w-full">
-            <canvas ref={canvasRef} className="w-full" />
+      <div
+        ref={scrollRef}
+        // detail > 1: the rest of a double-click whose first click opened this view.
+        onClick={(e) => e.detail <= 1 && onClose()}
+        className="h-full w-full cursor-zoom-out overflow-auto"
+      >
+        <div className="flex min-h-full w-max min-w-full items-center justify-center p-8">
+          <div className="relative shrink-0" style={{ width: zoomedWidth }}>
+            <canvas ref={canvasRef} className="block w-full" />
             {links.map((link, i) => (
               <a
                 key={i}
@@ -100,7 +126,7 @@ export function PdfZoomOverlay({
                 target="_blank"
                 rel="noopener noreferrer"
                 title={link.url}
-                className="absolute"
+                className="absolute cursor-pointer"
                 style={{
                   left: `${link.leftPct}%`,
                   top: `${link.topPct}%`,

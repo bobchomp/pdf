@@ -80,7 +80,13 @@ export function FlipbookViewer({
   const [wrapperWidth, setWrapperWidth] = useState<number | null>(null);
   const [stageMetrics, setStageMetrics] = useState<{ availW: number; paddingLeft: number } | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [zoom, setZoom] = useState<{ pageNumber: number; focus: { xPct: number; yPct: number } } | null>(null);
+  const [zoom, setZoom] = useState<{ pageNumber: number; pageWidth: number; focus: { xPct: number; yPct: number } } | null>(
+    null
+  );
+  const zoomOpenRef = useRef(false);
+  useEffect(() => {
+    zoomOpenRef.current = zoom !== null;
+  }, [zoom]);
   const stageRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const flipBookRef = useRef<{ pageFlip: () => PageFlipController } | null>(null);
@@ -154,18 +160,41 @@ export function FlipbookViewer({
     flipBookRef.current?.pageFlip()?.update();
   }, [wrapperWidth]);
 
-  // Double-tap to zoom. Attached as a native listener (not a React synthetic handler) directly
-  // on the stage, in the capture phase — react-pageflip reparents page nodes internally for its
-  // flip animation, so a per-page React handler can't reliably win the propagation race against
-  // its own native listeners, but this real DOM ancestor is guaranteed to see the event first.
+  // Double-tap (touch) / click (mouse) to zoom. Attached as native listeners (not React
+  // synthetic handlers) directly on the stage, in the capture phase — react-pageflip reparents
+  // page nodes internally for its flip animation, so a per-page React handler can't reliably win
+  // the propagation race against its own native listeners, but this real DOM ancestor is
+  // guaranteed to see the event first.
   //
-  // Listening on touchstart (not touchend) matters: react-pageflip commits to a flip as soon as
-  // a tap's touchstart lands, queuing it to complete even if the corresponding touchend is later
-  // blocked — so the second tap of a double-tap has to be stopped before react-pageflip's own
+  // Touch listens on touchstart (not touchend): react-pageflip commits to a gesture as soon as a
+  // touchstart lands, so the second tap of a double-tap has to be stopped before its own
   // touchstart handler ever sees it, not after.
   useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
+
+    // Returns whether a page was found at this point (and zoom opened).
+    function zoomAtPoint(x: number, y: number) {
+      // react-pageflip overlays its own decorative siblings (e.g. a shadow div) on top of the
+      // actual page content, so the literal event target often isn't a descendant of our page
+      // element — check the whole stack of elements at this point instead.
+      const pageEl = document
+        .elementsFromPoint(x, y)
+        .map((node) => node.closest<HTMLElement>("[data-page-number]"))
+        .find((node): node is HTMLElement => node !== null);
+      if (!pageEl) return false;
+
+      const rect = pageEl.getBoundingClientRect();
+      setZoom({
+        pageNumber: Number(pageEl.dataset.pageNumber),
+        pageWidth: rect.width,
+        focus: {
+          xPct: ((x - rect.left) / rect.width) * 100,
+          yPct: ((y - rect.top) / rect.height) * 100,
+        },
+      });
+      return true;
+    }
 
     let lastTap: { time: number; x: number; y: number } | null = null;
 
@@ -183,29 +212,45 @@ export function FlipbookViewer({
       }
 
       lastTap = null;
-      // react-pageflip overlays its own decorative siblings (e.g. a shadow div) on top of the
-      // actual page content during a flip, so the literal event target often isn't a descendant
-      // of our page element — check the whole stack of elements at this point instead.
-      const pageEl = document
-        .elementsFromPoint(touch.clientX, touch.clientY)
-        .map((el) => el.closest<HTMLElement>("[data-page-number]"))
-        .find((el): el is HTMLElement => el !== null);
-      if (!pageEl) return;
+      if (zoomAtPoint(touch.clientX, touch.clientY)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
 
-      e.preventDefault();
+    // Mouse: a single click on a page zooms. react-pageflip would otherwise still turn the page
+    // on clicks in its (large) corner hotspots even with disableFlipByClick, and on mouse drags,
+    // so its mouse handling is kept out of the way entirely; it registers touch separately, so
+    // touch swiping is unaffected. Only real mouse clicks count — a tap also fires a click
+    // afterwards, which shouldn't zoom.
+    let mouseDownAt: { x: number; y: number } | null = null;
+
+    function handlePointerDown(e: PointerEvent) {
+      mouseDownAt = e.pointerType === "mouse" && e.button === 0 ? { x: e.clientX, y: e.clientY } : null;
+    }
+
+    function handleMouseDown(e: MouseEvent) {
       e.stopPropagation();
-      const rect = pageEl.getBoundingClientRect();
-      setZoom({
-        pageNumber: Number(pageEl.dataset.pageNumber),
-        focus: {
-          xPct: ((touch.clientX - rect.left) / rect.width) * 100,
-          yPct: ((touch.clientY - rect.top) / rect.height) * 100,
-        },
-      });
+    }
+
+    function handleClick(e: MouseEvent) {
+      const downAt = mouseDownAt;
+      mouseDownAt = null;
+      if (!downAt || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6) return;
+      if ((e.target as HTMLElement | null)?.closest("a[href], button")) return;
+      zoomAtPoint(e.clientX, e.clientY);
     }
 
     el.addEventListener("touchstart", handleTouchStart, { capture: true });
-    return () => el.removeEventListener("touchstart", handleTouchStart, { capture: true });
+    el.addEventListener("pointerdown", handlePointerDown, { capture: true });
+    el.addEventListener("mousedown", handleMouseDown, { capture: true });
+    el.addEventListener("click", handleClick, { capture: true });
+    return () => {
+      el.removeEventListener("touchstart", handleTouchStart, { capture: true });
+      el.removeEventListener("pointerdown", handlePointerDown, { capture: true });
+      el.removeEventListener("mousedown", handleMouseDown, { capture: true });
+      el.removeEventListener("click", handleClick, { capture: true });
+    };
   }, []);
 
   // Record the opening page as viewed once the book is ready — onFlip only fires on later
@@ -228,6 +273,8 @@ export function FlipbookViewer({
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
+      // While zoomed in, arrow keys scroll the zoomed page instead of flipping the book behind it.
+      if (zoomOpenRef.current) return;
 
       if (e.key === "ArrowLeft") {
         e.preventDefault();
@@ -444,7 +491,7 @@ export function FlipbookViewer({
                 useMouseEvents={true}
                 swipeDistance={30}
                 showPageCorners={false}
-                disableFlipByClick={false}
+                disableFlipByClick={true}
                 onFlip={(e: { data: number }) => {
                   setCurrentPage(e.data);
                   recordPageFlip(e.data + 1);
@@ -469,7 +516,13 @@ export function FlipbookViewer({
       </div>
 
       {zoom && doc && (
-        <PdfZoomOverlay doc={doc} pageNumber={zoom.pageNumber} focus={zoom.focus} onClose={() => setZoom(null)} />
+        <PdfZoomOverlay
+          doc={doc}
+          pageNumber={zoom.pageNumber}
+          pageWidth={zoom.pageWidth}
+          focus={zoom.focus}
+          onClose={() => setZoom(null)}
+        />
       )}
 
       {isReady && logoUrl && (
