@@ -163,15 +163,11 @@ export function FlipbookViewer({
     flipBookRef.current?.pageFlip()?.update();
   }, [wrapperWidth]);
 
-  // Double-tap (touch) / click (mouse) to zoom. Attached as native listeners (not React
+  // Tap (touch) / click (mouse) to zoom. Attached as native listeners (not React
   // synthetic handlers) directly on the stage, in the capture phase — react-pageflip reparents
   // page nodes internally for its flip animation, so a per-page React handler can't reliably win
   // the propagation race against its own native listeners, but this real DOM ancestor is
   // guaranteed to see the event first.
-  //
-  // Touch listens on touchstart (not touchend): react-pageflip commits to a gesture as soon as a
-  // touchstart lands, so the second tap of a double-tap has to be stopped before its own
-  // touchstart handler ever sees it, not after.
   useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
@@ -201,26 +197,27 @@ export function FlipbookViewer({
       return true;
     }
 
-    let lastTap: { time: number; x: number; y: number } | null = null;
+    // Touch: a quick, still, single-finger tap on a page zooms. react-pageflip only treats a touch
+    // as a press once it's been held for its 250ms swipe window, so a tap shorter than that never
+    // turns the page (not even in a corner) and swipes are left entirely to it.
+    let touchStartAt: { x: number; y: number; time: number } | null = null;
 
     function handleTouchStart(e: TouchEvent) {
       const touch = e.touches[0];
-      if (!touch || zoomOpenRef.current) return;
+      touchStartAt =
+        touch && e.touches.length === 1 && !zoomOpenRef.current ? { x: touch.clientX, y: touch.clientY, time: Date.now() } : null;
+    }
 
-      const now = Date.now();
-      const isDoubleTap =
-        !!lastTap && now - lastTap.time < 350 && Math.hypot(touch.clientX - lastTap.x, touch.clientY - lastTap.y) < 40;
-
-      if (!isDoubleTap) {
-        lastTap = { time: now, x: touch.clientX, y: touch.clientY };
-        return;
-      }
-
-      lastTap = null;
-      if (zoomAtPoint(touch.clientX, touch.clientY)) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+    function handleTouchEnd(e: TouchEvent) {
+      const start = touchStartAt;
+      touchStartAt = null;
+      const touch = e.changedTouches[0];
+      if (!start || !touch || zoomOpenRef.current) return;
+      if (Date.now() - start.time > 250 || Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 10) return;
+      if ((e.target as HTMLElement | null)?.closest("a[href], button")) return;
+      // preventDefault also cancels the tap's trailing click, which would otherwise land on (and
+      // immediately close) the zoom view that's just opened under the finger.
+      if (zoomAtPoint(touch.clientX, touch.clientY)) e.preventDefault();
     }
 
     // Mouse: a single click on a page zooms. react-pageflip would otherwise still turn the page
@@ -247,11 +244,13 @@ export function FlipbookViewer({
     }
 
     el.addEventListener("touchstart", handleTouchStart, { capture: true });
+    el.addEventListener("touchend", handleTouchEnd, { capture: true });
     el.addEventListener("pointerdown", handlePointerDown, { capture: true });
     el.addEventListener("mousedown", handleMouseDown, { capture: true });
     el.addEventListener("click", handleClick, { capture: true });
     return () => {
       el.removeEventListener("touchstart", handleTouchStart, { capture: true });
+      el.removeEventListener("touchend", handleTouchEnd, { capture: true });
       el.removeEventListener("pointerdown", handlePointerDown, { capture: true });
       el.removeEventListener("mousedown", handleMouseDown, { capture: true });
       el.removeEventListener("click", handleClick, { capture: true });
@@ -446,7 +445,7 @@ export function FlipbookViewer({
         </div>
       )}
 
-      <div ref={stageRef} className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-6 py-6 sm:px-12 sm:py-10">
+      <div ref={stageRef} className="relative flex min-h-0 w-full flex-1 items-center justify-center touch-manipulation overflow-hidden px-6 py-6 sm:px-12 sm:py-10">
         {!isReady && <p className="text-sm text-gray-400">Loading flipbook…</p>}
 
         {isReady && (

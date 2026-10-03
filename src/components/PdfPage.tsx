@@ -49,7 +49,7 @@ export function PdfPage({
   }, [shouldRender, rendered, doc, pageNumber]);
 
   return (
-    // data-page-number lets a stage-level double-tap listener identify which page was tapped,
+    // data-page-number lets a stage-level tap/click listener identify which page was hit,
     // since react-pageflip can reparent these nodes internally for its flip animation — a
     // per-page React event handler can't reliably win the propagation race against its own
     // native listeners, but a single ancestor-level capture listener always fires first.

@@ -53,6 +53,7 @@ export function PdfZoomOverlay({
   const pageRef = useRef<HTMLDivElement>(null);
   const closingRef = useRef(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openedAtRef = useRef(0);
   const [controlsShown, setControlsShown] = useState(false);
   const zoomedWidth = Math.round(sourceRect.width * ZOOM_FACTOR);
 
@@ -70,6 +71,7 @@ export function PdfZoomOverlay({
   // Opening, before first paint: show the book's copy of the page, scroll so the point that was
   // clicked/tapped ends up centered, then grow the page out of its spot in the book.
   useLayoutEffect(() => {
+    openedAtRef.current = performance.now();
     const canvas = canvasRef.current;
     const scroller = scrollRef.current;
     const pageEl = pageRef.current;
@@ -221,8 +223,9 @@ export function PdfZoomOverlay({
           e.preventDefault();
           e.stopPropagation();
         }}
-        // detail > 1: the rest of a double-click whose first click opened this view.
-        onClick={(e) => e.detail <= 1 && close()}
+        // Ignore the second half of a habitual double-click/double-tap whose first half opened
+        // this view, which would otherwise close it again straight away.
+        onClick={(e) => e.detail <= 1 && performance.now() - openedAtRef.current > 400 && close()}
         className={`h-full w-full select-none overflow-auto ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
       >
         <div className="flex min-h-full w-max min-w-full items-center justify-center p-8">
