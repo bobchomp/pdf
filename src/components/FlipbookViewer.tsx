@@ -15,6 +15,9 @@ const HTMLFlipBook = dynamic(() => import("react-pageflip"), { ssr: false }) as 
 
 const RENDER_WINDOW = 3;
 const DEFAULT_PAGE_ASPECT = 500 / 700; // width/height fallback, used only until the PDF tells us its real one
+const NAV_BUTTON_SIZE = 40;
+const NAV_BUTTON_GAP = 16; // desired breathing room between a nav button and the book's edge
+const NAV_BUTTON_MIN_OFFSET = 8; // falls back to near the stage's own edge once the book fills the width
 
 type PageFlipController = {
   flipNext: () => void;
@@ -75,6 +78,7 @@ export function FlipbookViewer({
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
   const [pageAspect, setPageAspect] = useState(DEFAULT_PAGE_ASPECT);
   const [wrapperWidth, setWrapperWidth] = useState<number | null>(null);
+  const [stageMetrics, setStageMetrics] = useState<{ availW: number; paddingLeft: number } | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoom, setZoom] = useState<{ pageNumber: number; focus: { xPct: number; yPct: number } } | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -134,7 +138,9 @@ export function FlipbookViewer({
       // Assumes a two-page landscape spread (the common case); on narrow screens the library
       // falls back to single-page portrait mode on its own once the width is small enough.
       const widthLimitedByHeight = availH * pageAspect * 2;
-      setWrapperWidth(Math.max(1, Math.min(availW, widthLimitedByHeight)));
+      const newWrapperWidth = Math.max(1, Math.min(availW, widthLimitedByHeight));
+      setWrapperWidth(newWrapperWidth);
+      setStageMetrics({ availW, paddingLeft: parseFloat(style.paddingLeft) });
     }
 
     recompute();
@@ -263,6 +269,18 @@ export function FlipbookViewer({
     transform: shift === "left" ? "translateX(-25%) translateZ(0)" : shift === "right" ? "translateX(25%) translateZ(0)" : "translateZ(0)",
   };
 
+  // Nav buttons sit just outside the visible document's edge rather than the stage's. A lone
+  // cover/back page only fills half of react-pageflip's two-page slot (centered by the shift
+  // above), so the visible width halves there. Clamped toward the stage edge once the document
+  // fills the width, e.g. on mobile.
+  const visibleBookWidth = wrapperWidth === null ? 0 : shift ? wrapperWidth / 2 : wrapperWidth;
+  const navButtonOffset = stageMetrics
+    ? Math.max(
+        NAV_BUTTON_MIN_OFFSET,
+        stageMetrics.paddingLeft + (stageMetrics.availW - visibleBookWidth) / 2 - NAV_BUTTON_SIZE - NAV_BUTTON_GAP
+      )
+    : NAV_BUTTON_MIN_OFFSET;
+
   function recordPageFlip(pageNumber: number) {
     if (!viewId) return;
     fetch("/api/public/page-events", {
@@ -385,7 +403,8 @@ export function FlipbookViewer({
               onClick={() => flipBookRef.current?.pageFlip()?.flipPrev()}
               disabled={atFirstPage}
               aria-label="Previous page"
-              className="absolute left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-gray-900/40 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-gray-900/60 disabled:opacity-0 sm:left-4"
+              style={{ left: navButtonOffset }}
+              className="absolute z-10 flex h-10 w-10 items-center justify-center rounded-full bg-gray-900/40 text-white shadow-sm backdrop-blur-sm transition-[left,right,background-color,opacity] duration-300 hover:bg-gray-900/60 disabled:opacity-0"
             >
               <IconChevronLeft size={20} />
             </button>
@@ -393,7 +412,8 @@ export function FlipbookViewer({
               onClick={() => flipBookRef.current?.pageFlip()?.flipNext()}
               disabled={atLastPage}
               aria-label="Next page"
-              className="absolute right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-gray-900/40 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-gray-900/60 disabled:opacity-0 sm:right-4"
+              style={{ right: navButtonOffset }}
+              className="absolute z-10 flex h-10 w-10 items-center justify-center rounded-full bg-gray-900/40 text-white shadow-sm backdrop-blur-sm transition-[left,right,background-color,opacity] duration-300 hover:bg-gray-900/60 disabled:opacity-0"
             >
               <IconChevronRight size={20} />
             </button>
