@@ -168,13 +168,62 @@ export function PdfZoomOverlay({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [close]);
 
+  // Mouse drag to pan around the zoomed page (touch already pans natively via overflow scrolling).
+  const dragRef = useRef<{ x: number; y: number; left: number; top: number; moved: boolean } | null>(null);
+  const suppressClickRef = useRef(false);
+  const [dragging, setDragging] = useState(false);
+
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    const scroller = e.currentTarget;
+    dragRef.current = { x: e.clientX, y: e.clientY, left: scroller.scrollLeft, top: scroller.scrollTop, moved: false };
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    if (!drag.moved) {
+      if (Math.hypot(dx, dy) < 4) return; // still just a click
+      drag.moved = true;
+      setDragging(true);
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    e.currentTarget.scrollLeft = drag.left - dx;
+    e.currentTarget.scrollTop = drag.top - dy;
+  }
+
+  function endDrag() {
+    if (dragRef.current?.moved) {
+      setDragging(false);
+      // The click (if any) is dispatched right after pointerup; drop the flag once it's had its chance.
+      suppressClickRef.current = true;
+      setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 0);
+    }
+    dragRef.current = null;
+  }
+
   return (
     <div className="absolute inset-0 z-20">
       <div
         ref={scrollRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        // A click that ends a drag shouldn't also close the view or follow a link under it.
+        onClickCapture={(e) => {
+          if (!suppressClickRef.current) return;
+          suppressClickRef.current = false;
+          e.preventDefault();
+          e.stopPropagation();
+        }}
         // detail > 1: the rest of a double-click whose first click opened this view.
         onClick={(e) => e.detail <= 1 && close()}
-        className="h-full w-full cursor-zoom-out overflow-auto"
+        className={`h-full w-full select-none overflow-auto ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
       >
         <div className="flex min-h-full w-max min-w-full items-center justify-center p-8">
           <div
@@ -190,6 +239,7 @@ export function PdfZoomOverlay({
                 target="_blank"
                 rel="noopener noreferrer"
                 title={link.url}
+                draggable={false}
                 className="absolute cursor-pointer"
                 style={{
                   left: `${link.leftPct}%`,
