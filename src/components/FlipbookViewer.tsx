@@ -6,7 +6,7 @@ import Image from "next/image";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { loadPdf } from "@/lib/pdf-client";
 import { PdfPage } from "@/components/PdfPage";
-import { PdfZoomOverlay } from "@/components/PdfZoomOverlay";
+import { PdfZoomOverlay, ZOOM_DURATION_MS } from "@/components/PdfZoomOverlay";
 import { IconChevronLeft, IconChevronRight, IconDownload, IconPrint, IconFullscreen } from "@/components/icons";
 
 const HTMLFlipBook = dynamic(() => import("react-pageflip"), { ssr: false }) as unknown as React.ComponentType<
@@ -80,9 +80,12 @@ export function FlipbookViewer({
   const [wrapperWidth, setWrapperWidth] = useState<number | null>(null);
   const [stageMetrics, setStageMetrics] = useState<{ availW: number; paddingLeft: number } | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [zoom, setZoom] = useState<{ pageNumber: number; pageWidth: number; focus: { xPct: number; yPct: number } } | null>(
-    null
-  );
+  const [zoom, setZoom] = useState<{
+    pageNumber: number;
+    sourceRect: { left: number; top: number; width: number; height: number };
+    focus: { xPct: number; yPct: number };
+  } | null>(null);
+  const [zoomClosing, setZoomClosing] = useState(false);
   const zoomOpenRef = useRef(false);
   useEffect(() => {
     zoomOpenRef.current = zoom !== null;
@@ -184,10 +187,12 @@ export function FlipbookViewer({
         .find((node): node is HTMLElement => node !== null);
       if (!pageEl) return false;
 
-      const rect = pageEl.getBoundingClientRect();
+      // The rendered canvas is the page as actually seen (the slot around it can letterbox it).
+      const canvas = pageEl.querySelector("canvas");
+      const rect = (canvas && canvas.width > 0 ? canvas : pageEl).getBoundingClientRect();
       setZoom({
         pageNumber: Number(pageEl.dataset.pageNumber),
-        pageWidth: rect.width,
+        sourceRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
         focus: {
           xPct: ((x - rect.left) / rect.width) * 100,
           yPct: ((y - rect.top) / rect.height) * 100,
@@ -200,7 +205,7 @@ export function FlipbookViewer({
 
     function handleTouchStart(e: TouchEvent) {
       const touch = e.touches[0];
-      if (!touch) return;
+      if (!touch || zoomOpenRef.current) return;
 
       const now = Date.now();
       const isDoubleTap =
@@ -236,7 +241,7 @@ export function FlipbookViewer({
     function handleClick(e: MouseEvent) {
       const downAt = mouseDownAt;
       mouseDownAt = null;
-      if (!downAt || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6) return;
+      if (!downAt || zoomOpenRef.current || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6) return;
       if ((e.target as HTMLElement | null)?.closest("a[href], button")) return;
       zoomAtPoint(e.clientX, e.clientY);
     }
@@ -391,7 +396,7 @@ export function FlipbookViewer({
             <div className="flex items-center gap-1">
               <button
                 onClick={() => flipBookRef.current?.pageFlip()?.flipPrev()}
-                disabled={atFirstPage}
+                disabled={atFirstPage || zoom !== null}
                 aria-label="Previous page"
                 className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20 disabled:opacity-30"
               >
@@ -402,7 +407,7 @@ export function FlipbookViewer({
               </span>
               <button
                 onClick={() => flipBookRef.current?.pageFlip()?.flipNext()}
-                disabled={atLastPage}
+                disabled={atLastPage || zoom !== null}
                 aria-label="Next page"
                 className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20 disabled:opacity-30"
               >
@@ -451,7 +456,7 @@ export function FlipbookViewer({
               disabled={atFirstPage}
               aria-label="Previous page"
               style={{ left: navButtonOffset }}
-              className="absolute z-10 flex h-10 w-10 items-center justify-center rounded-full bg-gray-900/40 text-white shadow-sm backdrop-blur-sm transition-[left,right,background-color,opacity] duration-300 hover:bg-gray-900/60 disabled:opacity-0"
+              className={`absolute z-10 flex h-10 w-10 items-center justify-center rounded-full bg-gray-900/40 text-white shadow-sm backdrop-blur-sm transition-[left,right,background-color,opacity] duration-300 hover:bg-gray-900/60 disabled:opacity-0 ${zoom ? "pointer-events-none opacity-0" : ""}`}
             >
               <IconChevronLeft size={20} />
             </button>
@@ -460,12 +465,21 @@ export function FlipbookViewer({
               disabled={atLastPage}
               aria-label="Next page"
               style={{ right: navButtonOffset }}
-              className="absolute z-10 flex h-10 w-10 items-center justify-center rounded-full bg-gray-900/40 text-white shadow-sm backdrop-blur-sm transition-[left,right,background-color,opacity] duration-300 hover:bg-gray-900/60 disabled:opacity-0"
+              className={`absolute z-10 flex h-10 w-10 items-center justify-center rounded-full bg-gray-900/40 text-white shadow-sm backdrop-blur-sm transition-[left,right,background-color,opacity] duration-300 hover:bg-gray-900/60 disabled:opacity-0 ${zoom ? "pointer-events-none opacity-0" : ""}`}
             >
               <IconChevronRight size={20} />
             </button>
 
-            <div style={{ width: wrapperWidth, maxWidth: "100%" }}>
+            <div
+              style={{
+                width: wrapperWidth,
+                maxWidth: "100%",
+                // While zoomed, the book fades out under the zoomed page and back in as it closes.
+                opacity: zoom && !zoomClosing ? 0 : 1,
+                transition: `opacity ${ZOOM_DURATION_MS}ms ease`,
+                pointerEvents: zoom ? "none" : undefined,
+              }}
+            >
               <HTMLFlipBook
                 key={pageCount}
                 ref={flipBookRef}
@@ -513,17 +527,21 @@ export function FlipbookViewer({
             </div>
           </>
         )}
-      </div>
 
-      {zoom && doc && (
-        <PdfZoomOverlay
-          doc={doc}
-          pageNumber={zoom.pageNumber}
-          pageWidth={zoom.pageWidth}
-          focus={zoom.focus}
-          onClose={() => setZoom(null)}
-        />
-      )}
+        {zoom && doc && (
+          <PdfZoomOverlay
+            doc={doc}
+            pageNumber={zoom.pageNumber}
+            sourceRect={zoom.sourceRect}
+            focus={zoom.focus}
+            onCloseStart={() => setZoomClosing(true)}
+            onClosed={() => {
+              setZoom(null);
+              setZoomClosing(false);
+            }}
+          />
+        )}
+      </div>
 
       {isReady && logoUrl && (
         <div className="absolute bottom-3 left-3 z-10">
