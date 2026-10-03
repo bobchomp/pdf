@@ -5,7 +5,7 @@ import { db, schema } from "@/db/client";
 import { newId, newSlug } from "@/lib/ids";
 import { deleteObject } from "@/lib/r2";
 import { applyPresetToFlipbook, getDefaultPreset } from "@/lib/presets";
-import { toLondonHourAndWeekday } from "@/lib/time";
+import { lastLondonDateKeys, toLondonDateKey, toLondonHourAndWeekday } from "@/lib/time";
 import { parseUserAgent } from "@/lib/user-agent";
 
 export async function listFlipbooks() {
@@ -200,8 +200,8 @@ export async function getFlipbookStats(flipbookId: string) {
 
   const views = await db.select().from(schema.flipbookViews).where(eq(schema.flipbookViews.flipbookId, flipbookId));
 
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const byDay = new Map<string, number>();
+  // Every one of the last 30 (London) days, zeros included, so the chart is a real timeline.
+  const byDay = new Map<string, number>(lastLondonDateKeys(30).map((day) => [day, 0]));
   const byHour = new Map<number, number>();
   const byWeekday = new Map<number, number>();
   const deviceTypes: string[] = [];
@@ -211,10 +211,8 @@ export async function getFlipbookStats(flipbookId: string) {
 
   for (const view of views) {
     const viewedAt = new Date(view.viewedAt);
-    if (viewedAt >= thirtyDaysAgo) {
-      const day = viewedAt.toISOString().slice(0, 10);
-      byDay.set(day, (byDay.get(day) ?? 0) + 1);
-    }
+    const day = toLondonDateKey(viewedAt);
+    if (byDay.has(day)) byDay.set(day, byDay.get(day)! + 1);
 
     deviceTypes.push(view.deviceType ? view.deviceType[0].toUpperCase() + view.deviceType.slice(1) : "Unknown");
     browsers.push(view.browser ?? "Unknown");
@@ -256,12 +254,15 @@ export async function getFlipbookStats(flipbookId: string) {
     }
   }
 
-  const pageEngagement = Array.from(pageReachedBy.entries())
-    .map(([pageNumber, sessionIds]) => ({ pageNumber, sessions: sessionIds.size }))
-    .sort((a, b) => a.pageNumber - b.pageNumber);
-
   const sessionsWithEvents = sessions.size;
   const pageCount = flipbook?.pageCount ?? 0;
+
+  // Every page, including ones nobody reached — those zeros are exactly where readers dropped off.
+  const lastPage = Math.max(pageCount, ...pageReachedBy.keys());
+  const pageEngagement =
+    sessionsWithEvents === 0
+      ? []
+      : Array.from({ length: lastPage }, (_, i) => ({ pageNumber: i + 1, sessions: pageReachedBy.get(i + 1)?.size ?? 0 }));
   const completedSessions = pageCount ? Array.from(sessions.values()).filter((s) => s.maxPage >= pageCount).length : 0;
   const completionRate = pageCount && sessionsWithEvents > 0 ? completedSessions / sessionsWithEvents : null;
 
@@ -273,9 +274,7 @@ export async function getFlipbookStats(flipbookId: string) {
 
   return {
     totalViews,
-    last30Days: Array.from(byDay.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, dayCount]) => ({ date, count: dayCount })),
+    last30Days: Array.from(byDay, ([date, dayCount]) => ({ date, count: dayCount })),
     deviceBreakdown: bucketCount(deviceTypes),
     browserBreakdown: bucketCount(browsers),
     countryBreakdown: bucketCount(countries),
