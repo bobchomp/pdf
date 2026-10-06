@@ -136,6 +136,22 @@ export function PdfZoomOverlay({
     []
   );
 
+  // Keep the close button clear of the zoom view's vertical scrollbar, whose width varies by
+  // browser and OS (and is zero where scrollbars overlay the content, e.g. macOS and phones).
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    const scroller = scrollRef.current;
+    const button = closeButtonRef.current;
+    if (!scroller || !button) return;
+    const place = () => {
+      button.style.right = `${12 + (scroller.offsetWidth - scroller.clientWidth)}px`;
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(scroller);
+    return () => ro.disconnect();
+  }, []);
+
   // Closing: shrink the page back into its spot in the book (re-measured, in case the window
   // was resized while zoomed), from wherever it currently is — even mid-way through opening.
   const close = useCallback(() => {
@@ -257,6 +273,7 @@ export function PdfZoomOverlay({
       </div>
 
       <button
+        ref={closeButtonRef}
         onClick={close}
         aria-label="Close zoom"
         className={`absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-gray-900/50 text-lg text-white shadow-sm backdrop-blur-sm transition-opacity duration-300 hover:bg-gray-900/70 ${
