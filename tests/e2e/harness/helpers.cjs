@@ -30,6 +30,25 @@ function openDb() {
   return new DatabaseSync(path.join(OUT, "test.db"));
 }
 
+/**
+ * Whether `selector` becomes visible within `timeoutMs`. For checks that follow a client-side
+ * update (a refresh or navigation), where reading the page once would race the re-render.
+ */
+function visibleSoon(pageOrFrame, selector, timeoutMs = 5000) {
+  return pageOrFrame.waitForSelector(selector, { state: "visible", timeout: timeoutMs }).then(
+    () => true,
+    () => false
+  );
+}
+
+/** Whether the document title becomes `title` within `timeoutMs` (Next.js sets it just after a client-side navigation). */
+function titleSoon(page, title, timeoutMs = 5000) {
+  return page.waitForFunction((t) => document.title === t, title, { timeout: timeoutMs }).then(
+    () => true,
+    () => false
+  );
+}
+
 /** Runs a suite and sets the exit code from its checks. */
 function run(suite) {
   suite().then(
@@ -44,4 +63,4 @@ function run(suite) {
   );
 }
 
-module.exports = { ROOT, OUT, BASE, check, launch, login, openDb, run, sleep: (ms) => new Promise((r) => setTimeout(r, ms)) };
+module.exports = { ROOT, OUT, BASE, check, launch, login, openDb, run, visibleSoon, titleSoon, sleep: (ms) => new Promise((r) => setTimeout(r, ms)) };

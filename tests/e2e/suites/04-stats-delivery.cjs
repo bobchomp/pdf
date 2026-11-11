@@ -1,6 +1,6 @@
 // Phase 3: events API, stats API, signed webhooks with retries, scheduled job and 30-day cleanup.
 // Needs the app running under `next dev`: production refuses webhooks to localhost.
-const { BASE, OUT: dir, check, launch, openDb, run, sleep } = require("../harness/helpers.cjs");
+const { BASE, OUT: dir, check, launch, openDb, run, sleep, titleSoon } = require("../harness/helpers.cjs");
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const HOOK = 'http://localhost:4300/hook';
@@ -215,7 +215,7 @@ run(async () => {
   await page.waitForSelector('text=Page engagement');
   const body = await page.textContent('body');
   check('document stats page: title, id, completion %', body.includes('Doc autumn') && body.includes('autumn') && /\d+%/.test(body), body.match(/\d+%/)?.[0]);
-  check('document stats page title', (await page.title()) === 'Doc autumn stats | Smithton Church Newsletter', await page.title());
+  check('document stats page title', await titleSoon(page, 'Doc autumn stats | Smithton Church Newsletter'), await page.title());
   await page.screenshot({ path: `${dir}/p3-document.png`, fullPage: true });
 
   // ---- Turn off, delete

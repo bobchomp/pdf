@@ -1,5 +1,5 @@
 // Phase 1: developer projects, API keys, rate limits and access control.
-const { BASE, OUT: dir, check, launch, run } = require("../harness/helpers.cjs");
+const { BASE, OUT: dir, check, launch, run, visibleSoon, titleSoon } = require("../harness/helpers.cjs");
 const api = (key, path = '/api/v1/project') => fetch(BASE + path, { headers: key === null ? {} : { Authorization: `Bearer ${key}` } }).then(async (r) => ({ status: r.status, body: await r.json() }));
 
 async function login(page, email) {
@@ -19,7 +19,7 @@ run(async () => {
   check('admin sees Developers tab', await page.isVisible('nav >> text=Developers'));
   await page.click('nav >> text=Developers');
   await page.waitForURL(/\/dashboard\/developers$/);
-  check('developers page title', (await page.title()) === 'Developers | Smithton Church Newsletter', await page.title());
+  check('developers page title', await titleSoon(page, 'Developers | Smithton Church Newsletter'), await page.title());
 
   // Invalid address is rejected with a clear message.
   await page.fill('input[placeholder^="Project name"]', 'Highland Youth site');
@@ -52,7 +52,7 @@ run(async () => {
   await page.screenshot({ path: `${dir}/p1-new-key.png`, fullPage: true });
   await page.click("text=I've saved it");
   check('key panel dismissed (key no longer shown)', !(await page.content()).includes(key));
-  check('key listed with prefix only, "Never used"', await page.isVisible(`text=${key.slice(0, 11)}…`) && await page.isVisible('text=Never used'));
+  check('key listed with prefix only, "Never used"', await visibleSoon(page, `text=${key.slice(0, 11)}…`) && await visibleSoon(page, 'text=Never used'));
 
   // API behaviour.
   let r = await api(key);
@@ -82,7 +82,7 @@ run(async () => {
   await page.waitForSelector('text=Key revoked.');
   r = await api(key); check('revoked key → 401 immediately', r.status === 401 && r.body.error.code === 'invalid_api_key');
   r = await api(key2); check('other key unaffected → 200', r.status === 200);
-  check('revoked key listed under "1 revoked key"', await page.isVisible('text=1 revoked key'));
+  check('revoked key listed under "1 revoked key"', await visibleSoon(page, 'text=1 revoked key'));
   await page.screenshot({ path: `${dir}/p1-project.png`, fullPage: true });
 
   // Rate limit: 300/min per key (1 already used by key2 above).
@@ -115,7 +115,7 @@ run(async () => {
   page.once('dialog', (d) => d.accept());
   await Promise.all([page.waitForURL(/\/dashboard\/developers$/), page.click('button:has-text("Delete project")')]);
   r = await api(key2); check('deleted project → its keys 401', r.status === 401);
-  check('list empty after delete', await page.isVisible('text=No projects yet.'));
+  check('list empty after delete', await visibleSoon(page, 'text=No projects yet.'));
 
   await browser.close();
 });
