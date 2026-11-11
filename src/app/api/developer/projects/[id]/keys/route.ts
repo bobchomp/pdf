@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
-import { requireAdmin } from "@/lib/require-session";
+import { requireDeveloper } from "@/lib/require-session";
 import { createKey, getProject } from "@/lib/api-projects";
 import { createKeySchema } from "@/lib/api-project-input";
 
 /** Creates a key. The full key is in this response only; afterwards just its first characters are kept. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { error } = await requireAdmin();
+  const { error } = await requireDeveloper();
   if (error) return error;
 
   const { id } = await params;

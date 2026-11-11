@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function DashboardNav({ isAdmin }: { isAdmin: boolean }) {
+export function DashboardNav({ isAdmin, showDevelopers }: { isAdmin: boolean; showDevelopers: boolean }) {
   const pathname = usePathname();
   const onPresets = pathname.startsWith("/dashboard/presets");
   const onTeam = pathname.startsWith("/dashboard/admin");
@@ -32,7 +32,7 @@ export function DashboardNav({ isAdmin }: { isAdmin: boolean }) {
           Team
         </Link>
       )}
-      {isAdmin && (
+      {showDevelopers && (
         <Link href="/dashboard/developers" className={tabClass(onDevelopers)}>
           Developers
         </Link>

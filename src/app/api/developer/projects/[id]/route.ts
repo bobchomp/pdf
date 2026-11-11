@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
-import { requireAdmin } from "@/lib/require-session";
+import { requireDeveloper } from "@/lib/require-session";
 import { deleteProject, getProject, updateProject } from "@/lib/api-projects";
 import { parseOrigins, updateProjectSchema } from "@/lib/api-project-input";
 import { describeZodError } from "@/lib/viewer-settings";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { error } = await requireAdmin();
+  const { error } = await requireDeveloper();
   if (error) return error;
 
   const { id } = await params;
@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { error } = await requireAdmin();
+  const { error } = await requireDeveloper();
   if (error) return error;
 
   const { id } = await params;

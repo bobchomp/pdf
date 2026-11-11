@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { hasDeveloperAccess } from "@/lib/users";
 import { Logo } from "@/components/Logo";
 import { DashboardNav } from "./nav";
 import { logoutAction } from "./actions";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
+  const showDevelopers = await hasDeveloperAccess(session?.user.id);
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -16,7 +18,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </Link>
 
           <div className="flex items-center gap-7">
-            <DashboardNav isAdmin={session?.user.role === "admin"} />
+            <DashboardNav isAdmin={session?.user.role === "admin"} showDevelopers={showDevelopers} />
             <span className="h-5 w-px bg-gray-200" />
             <span className="text-[13.5px] text-gray-400">{session?.user.email}</span>
             <form action={logoutAction}>

@@ -10,6 +10,7 @@ const patchSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   email: z.string().email().optional(),
   role: z.enum(["admin", "member"]).optional(),
+  developerAccess: z.boolean().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -32,7 +33,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   try {
     const user = await updateUser(id, parsed.data);
-    return Response.json({ user: { id: user?.id, email: user?.email, name: user?.name, role: user?.role } });
+    return Response.json({
+      user: { id: user?.id, email: user?.email, name: user?.name, role: user?.role, developerAccess: user?.developerAccess },
+    });
   } catch (err) {
     console.error(`PATCH /api/users/${id} failed:`, err);
     return Response.json({ error: err instanceof AppError ? err.message : "Failed to update user." }, { status: 400 });

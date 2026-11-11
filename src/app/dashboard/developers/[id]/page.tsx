@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { hasDeveloperAccess } from "@/lib/users";
 import { getProject, listKeys } from "@/lib/api-projects";
 import { ProjectSettings } from "./project-settings";
 
@@ -23,7 +24,7 @@ const formatDate = (d: Date | null) => (d ? dateTime.format(new Date(d)) : null)
 
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
-  if (session?.user.role !== "admin") redirect("/dashboard");
+  if (!(await hasDeveloperAccess(session?.user.id))) redirect("/dashboard");
 
   const { id } = await params;
   const project = await getProject(id);

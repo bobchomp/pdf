@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Switch } from "@/components/Switch";
 
-type User = { id: string; email: string; name: string; role: string; mustResetPassword: boolean };
+type User = { id: string; email: string; name: string; role: string; mustResetPassword: boolean; developerAccess: boolean };
 
 export function TeamManager({ users }: { users: User[] }) {
   const router = useRouter();
@@ -20,6 +21,9 @@ export function TeamManager({ users }: { users: User[] }) {
   const [editRole, setEditRole] = useState<"admin" | "member">("member");
   const [editError, setEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  // Shown immediately on click, ahead of the server's refreshed list; dropped again if saving fails.
+  const [developerAccessShown, setDeveloperAccessShown] = useState<Record<string, boolean>>({});
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -61,6 +65,28 @@ export function TeamManager({ users }: { users: User[] }) {
       }
     } finally {
       setResettingId(null);
+    }
+  }
+
+  async function handleDeveloperAccess(u: User, on: boolean) {
+    setTogglingId(u.id);
+    setMessage(null);
+    setDeveloperAccessShown((shown) => ({ ...shown, [u.id]: on }));
+    try {
+      const res = await fetch(`/api/users/${u.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ developerAccess: on }),
+      });
+      if (!res.ok) {
+        setDeveloperAccessShown((shown) => ({ ...shown, [u.id]: !on }));
+        setMessage("Failed to change developer access.");
+        return;
+      }
+      setMessage(`Developer access ${on ? "turned on" : "turned off"} for ${u.name}.`);
+      router.refresh();
+    } finally {
+      setTogglingId(null);
     }
   }
 
@@ -188,6 +214,16 @@ export function TeamManager({ users }: { users: User[] }) {
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-[13px] text-gray-500">
+                    Developers
+                    <Switch
+                      checked={developerAccessShown[u.id] ?? u.developerAccess}
+                      disabled={togglingId === u.id}
+                      onChange={(on) => handleDeveloperAccess(u, on)}
+                      label={`Developer access for ${u.name}`}
+                    />
+                  </label>
+                  <span className="h-4 w-px bg-gray-200" />
                   <button onClick={() => startEdit(u)} className="text-[13px] font-semibold text-blue-600 hover:text-navy-700">
                     Edit
                   </button>

@@ -28,6 +28,7 @@ const RESET_PASSWORD = "password";
  * setup flow, where someone is choosing their own password right there) skips that.
  */
 export async function createUser(input: { email: string; password?: string; name: string; role?: "admin" | "member" }) {
+  const role = input.role ?? "member";
   const existing = await getUserByEmail(input.email);
   if (existing) {
     throw new AppError(`A user with email ${input.email} already exists.`);
@@ -41,14 +42,19 @@ export async function createUser(input: { email: string; password?: string; name
     email: input.email.toLowerCase(),
     passwordHash,
     name: input.name,
-    role: input.role ?? "member",
+    role,
     mustResetPassword: requiresReset,
+    // Admins start with it on; anyone can be switched either way from the Team page.
+    developerAccess: role === "admin",
     createdAt: new Date(),
   });
   return getUserById(id);
 }
 
-export async function updateUser(id: string, patch: { name?: string; email?: string; role?: "admin" | "member" }) {
+export async function updateUser(
+  id: string,
+  patch: { name?: string; email?: string; role?: "admin" | "member"; developerAccess?: boolean }
+) {
   const { email, ...rest } = patch;
   if (email !== undefined) {
     const existing = await getUserByEmail(email);
@@ -62,6 +68,15 @@ export async function updateUser(id: string, patch: { name?: string; email?: str
     .set({ ...rest, ...(email !== undefined ? { email: email.toLowerCase() } : {}) })
     .where(eq(schema.users.id, id));
   return getUserById(id);
+}
+
+/**
+ * Read from the database on every check rather than the sign-in session, so switching it on or
+ * off on the Team page takes effect immediately.
+ */
+export async function hasDeveloperAccess(userId: string | undefined) {
+  if (!userId) return false;
+  return (await getUserById(userId))?.developerAccess === true;
 }
 
 export async function verifyPassword(email: string, password: string) {

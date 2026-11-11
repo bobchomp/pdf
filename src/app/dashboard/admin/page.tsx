@@ -9,7 +9,14 @@ export default async function AdminPage() {
 
   return (
     <TeamManager
-      users={users.map((u) => ({ id: u.id, email: u.email, name: u.name, role: u.role, mustResetPassword: u.mustResetPassword }))}
+      users={users.map((u) => ({
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        role: u.role,
+        mustResetPassword: u.mustResetPassword,
+        developerAccess: u.developerAccess,
+      }))}
     />
   );
 }

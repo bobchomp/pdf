@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
-import { requireAdmin } from "@/lib/require-session";
+import { requireDeveloper } from "@/lib/require-session";
 import { createProject } from "@/lib/api-projects";
 import { createProjectSchema, parseOrigins } from "@/lib/api-project-input";
 
 export async function POST(req: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error } = await requireDeveloper();
   if (error) return error;
 
   const parsed = createProjectSchema.safeParse(await req.json().catch(() => null));

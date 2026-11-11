@@ -40,7 +40,9 @@ export default auth(async (req) => {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
   }
 
-  const isAdminOnly = pathname.startsWith("/dashboard/admin") || pathname.startsWith("/dashboard/developers");
+  // The Developers area is checked by its pages instead: access is a per-user switch held in the
+  // database, which can change after sign-in.
+  const isAdminOnly = pathname.startsWith("/dashboard/admin");
   if (isAdminOnly && req.auth?.user?.role !== "admin") {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
   }

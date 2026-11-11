@@ -10,6 +10,8 @@ export const users = sqliteTable("users", {
     .notNull()
     .default("member"),
   mustResetPassword: integer("must_reset_password", { mode: "boolean" }).notNull().default(false),
+  // Whether the Developers area (external projects and API keys) appears for this user.
+  developerAccess: integer("developer_access", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 

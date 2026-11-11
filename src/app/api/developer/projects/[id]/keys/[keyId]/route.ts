@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
-import { requireAdmin } from "@/lib/require-session";
+import { requireDeveloper } from "@/lib/require-session";
 import { revokeKey } from "@/lib/api-projects";
 
 /** Revokes a key. It stops working immediately; the record stays so past usage is still visible. */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string; keyId: string }> }) {
-  const { error } = await requireAdmin();
+  const { error } = await requireDeveloper();
   if (error) return error;
 
   const { id, keyId } = await params;
