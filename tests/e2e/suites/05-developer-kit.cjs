@@ -99,7 +99,21 @@ run(async () => {
   const anchors = await docs.$$eval('nav a', (as) => as.map((a) => a.getAttribute('href').slice(1)));
   const missing = [];
   for (const id of anchors) if (!(await docs.$(`#${id}`))) missing.push(id);
-  check('every nav link has its section', anchors.length === 12 && missing.length === 0, missing.join(','));
+  check('every nav link has its section', anchors.length === 13 && missing.length === 0, missing.join(','));
+
+  // AI assistant prompt: points at this site's plain-text guide, and the copy button copies it.
+  const prompt = await docs.textContent('#ai-prompt');
+  check('AI prompt points at /llms.txt, the API description and the kit', [`${BASE}/llms.txt`, `${BASE}/openapi.json`, `${BASE}/sdk/v1/flipbook-server.ts`, 'FLIPBOOK_API_KEY', 'verifyWebhook'].every((s) => prompt.includes(s)));
+  await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE });
+  await docs.click('button:has-text("Copy prompt")');
+  await docs.waitForSelector('button:has-text("Copied")');
+  check('Copy prompt copies the whole prompt', (await docs.evaluate(() => navigator.clipboard.readText())) === prompt.trim());
+
+  const llms = await fetch(`${BASE}/llms.txt`);
+  const llmsText = await llms.text();
+  check('llms.txt is plain text, readable cross-origin', /^text\/plain/.test(llms.headers.get('content-type')) && llms.headers.get('access-control-allow-origin') === '*');
+  const settingNames = ['backgroundColor', 'headerTextColor', 'showPageArrows', 'enableZoom', 'startPage'];
+  check('llms.txt covers endpoints, webhooks, settings and kit with this site\'s address', ['POST /api/v1/viewer-tokens', 'GET /api/v1/events', 'GET /api/v1/stats', 'Flipbook-Signature', `${BASE}/sdk/v1/flipbook.js`, 'embedded-only', ...settingNames].every((s) => llmsText.includes(s)));
   await docs.screenshot({ path: `${dir}/p4-docs.png`, fullPage: true });
   await docs.setViewportSize({ width: 390, height: 844 });
   check('docs fit a phone (no sideways scroll)', await docs.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));

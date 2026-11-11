@@ -3,6 +3,8 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { Logo } from "@/components/Logo";
 import { BUILT_IN_SETTINGS, SETTING_DESCRIPTIONS } from "@/lib/viewer-settings";
+import { integrationPrompt } from "@/lib/ai-prompt";
+import { CopyButton } from "./copy-button";
 
 export const metadata: Metadata = {
   title: "API docs",
@@ -11,6 +13,7 @@ export const metadata: Metadata = {
 
 const sections = [
   ["how-it-works", "How it works"],
+  ["ai-assistant", "With an AI assistant"],
   ["quick-start", "Quick start"],
   ["keys", "Keys and limits"],
   ["viewer-tokens", "Viewer links"],
@@ -53,6 +56,7 @@ export default async function DocsPage() {
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "newsletter.smithtonchurch.com";
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const origin = `${proto}://${host}`;
+  const prompt = integrationPrompt(origin);
 
   return (
     <div className="min-h-screen bg-white">
@@ -86,8 +90,9 @@ export default async function DocsPage() {
               own database. The PDFs stay in your project&apos;s own storage.
             </p>
             <p className="mt-3 text-sm text-gray-500">
-              Machine-readable description: <a className="font-semibold text-blue-600 hover:text-navy-700" href="/openapi.json">/openapi.json</a>{" "}
-              (OpenAPI 3.1).
+              Machine-readable: <a className="font-semibold text-blue-600 hover:text-navy-700" href="/openapi.json">/openapi.json</a>{" "}
+              (OpenAPI 3.1) and <a className="font-semibold text-blue-600 hover:text-navy-700" href="/llms.txt">/llms.txt</a> (this
+              guide as plain text, for AI tools).
             </p>
           </div>
 
@@ -111,6 +116,28 @@ export default async function DocsPage() {
                 <strong>sent to your server</strong> by webhook — or fetched by it from the events API.
               </li>
             </ol>
+          </Section>
+
+          <Section id="ai-assistant" title="With an AI assistant">
+            <p>
+              Using an AI coding assistant (Claude Code, Cursor, Copilot and so on) in your other project? Paste it this prompt. It
+              points the assistant at the plain-text guide <a className="font-semibold text-blue-600 hover:text-navy-700" href="/llms.txt">/llms.txt</a>,
+              the API description and the ready-made code, then has it look through your project, plan, and build the whole
+              integration: showing documents in the viewer and storing their stats in your own database.
+            </p>
+            <div className="rounded-xl border border-gray-200">
+              <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-4 py-2.5">
+                <span className="text-xs font-semibold text-gray-500">Prompt</span>
+                <CopyButton text={prompt} label="Copy prompt" />
+              </div>
+              <pre id="ai-prompt" className="max-h-96 overflow-y-auto whitespace-pre-wrap px-4 py-3.5 font-mono text-[12.5px] leading-relaxed text-gray-800">
+                {prompt}
+              </pre>
+            </div>
+            <p className="text-sm text-gray-500">
+              Before you start, have the project created on this site&apos;s Developers page so you have its secret key to hand. The
+              assistant will tell you what else to set up at the end.
+            </p>
           </Section>
 
           <Section id="quick-start" title="Quick start">
@@ -383,6 +410,10 @@ await saveCursor(cursor);
               <li>
                 <a className="font-semibold text-blue-600 hover:text-navy-700" href="/sdk/v1/flipbook-server.ts">flipbook-server.ts</a> —
                 typed API client and {c("verifyWebhook()")} for your server, no dependencies (copy into your project).
+              </li>
+              <li>
+                <a className="font-semibold text-blue-600 hover:text-navy-700" href="/llms.txt">llms.txt</a> — this guide as plain text, for
+                AI coding assistants.
               </li>
               <li>
                 <a className="font-semibold text-blue-600 hover:text-navy-700" href="/openapi.json">openapi.json</a> — for API tools and code
