@@ -78,6 +78,27 @@
       "when": 1794407826471,
       "tag": "0010_busy_thunderbolt_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1794408122270,
+      "tag": "0011_clever_black_bolt",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1794408129691,
+      "tag": "0012_worthless_bug",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1794408413195,
+      "tag": "0013_empty_meteorite",
+      "breakpoints": true
     }
   ]
 }

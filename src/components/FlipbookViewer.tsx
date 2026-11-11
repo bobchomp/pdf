@@ -90,7 +90,7 @@ export function FlipbookViewer({
   /** 1-based. */
   startPage?: number;
   /** Called with a 1-based page number each time a page is shown, including the first. */
-  onPageView?: (pageNumber: number) => void;
+  onPageView?: (pageNumber: number, pageCount: number) => void;
   onLinkClick?: (pageNumber: number, url: string) => void;
 }) {
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
@@ -299,8 +299,8 @@ export function FlipbookViewer({
   useEffect(() => {
     if (recordedInitialPageRef.current || doc === null || wrapperWidth === null || !onPageViewRef.current) return;
     recordedInitialPageRef.current = true;
-    onPageViewRef.current(currentPage + 1);
-  }, [doc, wrapperWidth, currentPage]);
+    onPageViewRef.current(currentPage + 1, pageCount);
+  }, [doc, wrapperWidth, currentPage, pageCount]);
 
   // Left/right arrow keys flip pages, unless the user is typing somewhere (e.g. the password
   // form on a private flipbook, or — for an embed — some other field on the host page).
@@ -568,7 +568,7 @@ export function FlipbookViewer({
                 disableFlipByClick={true}
                 onFlip={(e: { data: number }) => {
                   setCurrentPage(e.data);
-                  onPageViewRef.current?.(e.data + 1);
+                  onPageViewRef.current?.(e.data + 1, pageCount);
                 }}
                 onInit={(e: { data: { mode: "portrait" | "landscape" } }) => setOrientation(e.data.mode)}
                 onChangeOrientation={(e: { data: "portrait" | "landscape" }) => setOrientation(e.data)}

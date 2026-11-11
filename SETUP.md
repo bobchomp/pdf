@@ -145,6 +145,16 @@ variable from `.env.example` to the project's Environment Variables in the Verce
 dashboard (production **and** preview if you use preview deployments), and update
 `NEXTAUTH_URL` and the R2 CORS `AllowedOrigins` to match your real domain.
 
+### Scheduled job (external projects' stats)
+
+`/api/cron` retries webhook deliveries that failed and deletes external projects' stats older
+than 30 days. Set `CRON_SECRET` in Vercel to a long random value (e.g. `openssl rand -hex 32`);
+Vercel then calls the job once a day (see `vercel.json`) with that secret. Hobby plans can't
+run it more often, so to retry failed webhooks sooner, also call it from an external scheduler
+such as cron-job.org — e.g. every 5 minutes, GET `https://<your domain>/api/cron` with the
+header `Authorization: Bearer <CRON_SECRET>`. Running it often is safe: each webhook's retry
+back-off is respected.
+
 ## 8. Create your first (admin) login
 
 Visit `/setup` on your deployed app (e.g. `https://your-app.vercel.app/setup`) and fill

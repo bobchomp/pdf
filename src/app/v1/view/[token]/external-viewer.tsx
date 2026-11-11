@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { FlipbookViewer } from "@/components/FlipbookViewer";
 import type { ViewerSettings } from "@/lib/viewer-settings";
 
@@ -39,6 +39,7 @@ export function ExternalViewer({
   // The view is recorded as the viewer opens; page and link events wait for its ID rather than
   // holding up the PDF.
   const viewId = useMemo(() => startView(token, referrer), [token, referrer]);
+  const pageCountSent = useRef(false);
 
   function track(body: Record<string, unknown>) {
     viewId.then((id) => (id ? post("/api/viewer/events", { viewId: id, ...body }) : null)).catch(() => {});
@@ -65,7 +66,11 @@ export function ExternalViewer({
         showPageArrows={settings.showPageArrows}
         enableZoom={settings.enableZoom}
         startPage={settings.startPage}
-        onPageView={(pageNumber) => track({ type: "page_view", pageNumber })}
+        onPageView={(pageNumber, pageCount) => {
+          // The page count rides along once, so stats can show how many people reached the end.
+          track(pageCountSent.current ? { type: "page_view", pageNumber } : { type: "page_view", pageNumber, pageCount });
+          pageCountSent.current = true;
+        }}
         onLinkClick={(pageNumber, url) => track({ type: "link_click", pageNumber, url })}
       />
     </div>

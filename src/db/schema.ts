@@ -153,6 +153,15 @@ export const apiProjects = sqliteTable("api_projects", {
   allowedOrigins: text("allowed_origins", { mode: "json" }).$type<string[]>().notNull(),
   // Display settings every viewer token in this project starts from (see lib/viewer-settings).
   defaultSettings: text("default_settings", { mode: "json" }).$type<ProjectDefaultSettings>().notNull().default({}),
+
+  // Stats delivery: events are POSTed to webhookUrl, signed with webhookSecret, in order. The
+  // cursor is the seq of the last event the project's server accepted.
+  webhookUrl: text("webhook_url"),
+  webhookSecret: text("webhook_secret"),
+  webhookCursor: integer("webhook_cursor").notNull().default(0),
+  webhookFailures: integer("webhook_failures").notNull().default(0), // consecutive
+  webhookNextAttemptAt: integer("webhook_next_attempt_at", { mode: "timestamp" }),
+  webhookLockedUntil: integer("webhook_locked_until", { mode: "timestamp" }),
   status: text("status", { enum: ["active", "disabled"] })
     .notNull()
     .default("active"),
@@ -193,6 +202,8 @@ export const apiDocuments = sqliteTable(
     externalId: text("external_id").notNull(),
     title: text("title").notNull(),
     pdfUrl: text("pdf_url").notNull(),
+    // Reported by the viewer once the PDF has loaded; null until then.
+    pageCount: integer("page_count"),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
   },
@@ -235,11 +246,17 @@ export const apiViews = sqliteTable(
   (t) => [index("api_views_project_viewed_idx").on(t.projectId, t.viewedAt)]
 );
 
-/** Page turns and link clicks within an external view. */
-export const apiViewEvents = sqliteTable(
-  "api_view_events",
+/**
+ * Everything that happens in an external view, in order: the view starting, page views and link
+ * clicks. seq gives a strict order that never goes backwards (AUTOINCREMENT never reuses values,
+ * even after old rows are cleaned up), which is what the events API's cursor and webhook delivery
+ * rely on. Kept for 30 days.
+ */
+export const apiEvents = sqliteTable(
+  "api_events",
   {
-    id: text("id").primaryKey(),
+    seq: integer("seq").primaryKey({ autoIncrement: true }),
+    id: text("id").notNull().unique(),
     viewId: text("view_id")
       .notNull()
       .references(() => apiViews.id),
@@ -249,12 +266,37 @@ export const apiViewEvents = sqliteTable(
     documentId: text("document_id")
       .notNull()
       .references(() => apiDocuments.id),
-    type: text("type", { enum: ["page_view", "link_click"] }).notNull(),
-    pageNumber: integer("page_number").notNull(),
+    type: text("type", { enum: ["view_start", "page_view", "link_click"] }).notNull(),
+    pageNumber: integer("page_number"),
     url: text("url"),
-    occurredAt: integer("occurred_at", { mode: "timestamp" }).notNull(),
+    occurredAt: integer("occurred_at", { mode: "timestamp_ms" }).notNull(),
   },
-  (t) => [index("api_view_events_project_occurred_idx").on(t.projectId, t.occurredAt)]
+  (t) => [
+    index("api_events_project_seq_idx").on(t.projectId, t.seq),
+    index("api_events_occurred_idx").on(t.occurredAt),
+  ]
+);
+
+/** A log of webhook delivery attempts, shown on the project page. Kept for 30 days. */
+export const apiWebhookDeliveries = sqliteTable(
+  "api_webhook_deliveries",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => apiProjects.id),
+    attemptedAt: integer("attempted_at", { mode: "timestamp_ms" }).notNull(),
+    url: text("url").notNull(),
+    eventCount: integer("event_count").notNull(),
+    firstSeq: integer("first_seq"),
+    lastSeq: integer("last_seq"),
+    isTest: integer("is_test", { mode: "boolean" }).notNull().default(false),
+    success: integer("success", { mode: "boolean" }).notNull(),
+    statusCode: integer("status_code"),
+    error: text("error"),
+    durationMs: integer("duration_ms").notNull(),
+  },
+  (t) => [index("api_webhook_deliveries_project_idx").on(t.projectId, t.attemptedAt)]
 );
 
 export type User = typeof users.$inferSelect;

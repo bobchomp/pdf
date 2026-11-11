@@ -1,6 +1,6 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, ne, or } from "drizzle-orm";
 import { db, schema } from "@/db/client";
 import { newId } from "@/lib/ids";
 import { parseUserAgent } from "@/lib/user-agent";
@@ -86,17 +86,26 @@ export async function recordApiView(
 ) {
   const { deviceType, browser } = parseUserAgent(meta.userAgent);
   const id = newId("aview");
+  const now = new Date();
   await db.insert(schema.apiViews).values({
     id,
     projectId: token.projectId,
     documentId: token.documentId,
     tokenId: token.id,
-    viewedAt: new Date(),
+    viewedAt: now,
     referrer: meta.referrer.slice(0, 500),
     deviceType,
     browser,
     country: meta.country,
     region: meta.region,
+  });
+  await db.insert(schema.apiEvents).values({
+    id: `${id}_start`,
+    viewId: id,
+    projectId: token.projectId,
+    documentId: token.documentId,
+    type: "view_start",
+    occurredAt: now,
   });
   return id;
 }
@@ -110,7 +119,7 @@ export async function recordApiViewEvent(
   view: { id: string; projectId: string; documentId: string },
   event: { type: "page_view" | "link_click"; pageNumber: number; url?: string }
 ) {
-  await db.insert(schema.apiViewEvents).values({
+  await db.insert(schema.apiEvents).values({
     id: newId("aevt"),
     viewId: view.id,
     projectId: view.projectId,
@@ -120,4 +129,17 @@ export async function recordApiViewEvent(
     url: event.url?.slice(0, 1000) ?? null,
     occurredAt: new Date(),
   });
+}
+
+/** Remembers how many pages a document has (only written when it changes). */
+export async function setDocumentPageCount(documentId: string, pageCount: number) {
+  await db
+    .update(schema.apiDocuments)
+    .set({ pageCount })
+    .where(
+      and(
+        eq(schema.apiDocuments.id, documentId),
+        or(isNull(schema.apiDocuments.pageCount), ne(schema.apiDocuments.pageCount, pageCount))
+      )
+    );
 }

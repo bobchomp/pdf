@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Switch } from "@/components/Switch";
 import type { ProjectDefaultSettings } from "@/lib/viewer-settings";
 import { DefaultSettings } from "./default-settings";
+import { WebhookSettings, type WebhookInfo } from "./webhook-settings";
 
 const noopSubscribe = () => () => {};
 
@@ -15,6 +16,18 @@ type Project = {
   allowedOrigins: string[];
   status: "active" | "disabled";
   defaultSettings: ProjectDefaultSettings;
+};
+type Stats = {
+  totals: { views: number; pageViews: number; linkClicks: number };
+  documents: Array<{
+    id: string;
+    externalId: string;
+    title: string;
+    views: number;
+    pageViews: number;
+    linkClicks: number;
+    lastViewedAt: string | null;
+  }>;
 };
 type Key = { id: string; name: string; keyPrefix: string; createdAt: string; lastUsedAt: string | null; revoked: boolean };
 
@@ -27,7 +40,17 @@ const preClass = "mt-3 overflow-x-auto rounded-[9px] bg-gray-50 px-4 py-3 font-m
 const outlineButtonClass =
   "rounded-[9px] border border-gray-300 px-4 py-2.5 text-[13.5px] font-semibold text-gray-700 transition-colors hover:bg-gray-50";
 
-export function ProjectSettings({ project, keys }: { project: Project; keys: Key[] }) {
+export function ProjectSettings({
+  project,
+  keys,
+  stats,
+  webhook,
+}: {
+  project: Project;
+  keys: Key[];
+  stats: Stats;
+  webhook: WebhookInfo;
+}) {
   const router = useRouter();
   const [name, setName] = useState(project.name);
   const [origins, setOrigins] = useState(project.allowedOrigins.join("\n"));
@@ -255,6 +278,59 @@ export function ProjectSettings({ project, keys }: { project: Project; keys: Key
             </ul>
           </details>
         )}
+      </section>
+
+      <section className={cardClass}>
+        <h2 className="text-[15px] font-semibold text-navy-900">Stats</h2>
+        <p className="mt-1 text-xs text-gray-400">The last 30 days — older stats are deleted from this site after 30 days.</p>
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          {[
+            ["Views", stats.totals.views],
+            ["Page views", stats.totals.pageViews],
+            ["Link clicks", stats.totals.linkClicks],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-xl bg-gray-50 px-4 py-3">
+              <p className="text-xs text-gray-400">{label}</p>
+              <p className="mt-0.5 text-xl font-bold tabular-nums text-navy-900">{value}</p>
+            </div>
+          ))}
+        </div>
+        {stats.documents.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-400">No views yet.</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-gray-100 border-t border-gray-100">
+            {stats.documents.map((d) => (
+              <li key={d.id}>
+                <Link
+                  href={`/dashboard/developers/${project.id}/documents/${d.id}`}
+                  className="-mx-2 flex items-center justify-between gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-gray-50"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-gray-900">{d.title}</p>
+                    <p className="mt-0.5 truncate text-xs text-gray-400">
+                      <code className="font-mono">{d.externalId}</code>
+                      {d.lastViewedAt ? ` · last viewed ${d.lastViewedAt}` : ""}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-xs tabular-nums text-gray-500">
+                    {d.views} view{d.views === 1 ? "" : "s"} · {d.pageViews} page view{d.pageViews === 1 ? "" : "s"} · {d.linkClicks} click
+                    {d.linkClicks === 1 ? "" : "s"}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className={cardClass}>
+        <h2 className="text-[15px] font-semibold text-navy-900">Send stats to your project</h2>
+        <p className="mt-1 text-xs leading-relaxed text-gray-400">
+          Every view, page view and link click is POSTed to this address as it happens, so your project can store it in its own
+          database. Deliveries that fail are retried. Your server can also fetch them any time from{" "}
+          <code className="font-mono">GET /api/v1/events</code>, which works with or without a webhook.
+        </p>
+        <WebhookSettings projectId={project.id} webhook={webhook} />
       </section>
 
       <section className={cardClass}>

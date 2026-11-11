@@ -1,4 +1,6 @@
+import { after } from "next/server";
 import { z } from "zod";
+import { deliverWebhooks } from "@/lib/api-webhooks";
 import { getViewerToken, recordApiView } from "@/lib/api-viewer";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getGeoFromHeaders } from "@/lib/geo";
@@ -28,5 +30,6 @@ export async function POST(req: Request) {
     country,
     region,
   });
+  after(() => deliverWebhooks(found.token.projectId).catch((err) => console.error("Webhook delivery failed:", err)));
   return Response.json({ viewId });
 }

@@ -64,7 +64,8 @@ export async function updateProject(
 
 export async function deleteProject(id: string) {
   // Children first (no cascading deletes in this schema).
-  await db.delete(schema.apiViewEvents).where(eq(schema.apiViewEvents.projectId, id));
+  await db.delete(schema.apiWebhookDeliveries).where(eq(schema.apiWebhookDeliveries.projectId, id));
+  await db.delete(schema.apiEvents).where(eq(schema.apiEvents.projectId, id));
   await db.delete(schema.apiViews).where(eq(schema.apiViews.projectId, id));
   await db.delete(schema.apiViewerTokens).where(eq(schema.apiViewerTokens.projectId, id));
   await db.delete(schema.apiDocuments).where(eq(schema.apiDocuments.projectId, id));

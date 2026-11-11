@@ -1,9 +1,16 @@
+import { after } from "next/server";
 import { z } from "zod";
-import { getApiView, recordApiViewEvent } from "@/lib/api-viewer";
+import { deliverWebhooks } from "@/lib/api-webhooks";
+import { getApiView, recordApiViewEvent, setDocumentPageCount } from "@/lib/api-viewer";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 const schema = z.discriminatedUnion("type", [
-  z.object({ viewId: z.string().min(1).max(100), type: z.literal("page_view"), pageNumber: z.number().int().min(1).max(10000) }),
+  z.object({
+    viewId: z.string().min(1).max(100),
+    type: z.literal("page_view"),
+    pageNumber: z.number().int().min(1).max(10000),
+    pageCount: z.number().int().min(1).max(10000).optional(),
+  }),
   z.object({
     viewId: z.string().min(1).max(100),
     type: z.literal("link_click"),
@@ -25,5 +32,7 @@ export async function POST(req: Request) {
   }
 
   await recordApiViewEvent(view, parsed.data);
+  if (parsed.data.type === "page_view" && parsed.data.pageCount) await setDocumentPageCount(view.documentId, parsed.data.pageCount);
+  after(() => deliverWebhooks(view.projectId).catch((err) => console.error("Webhook delivery failed:", err)));
   return Response.json({ ok: true });
 }

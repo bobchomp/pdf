@@ -1,0 +1,1 @@
+ALTER TABLE `api_documents` ADD `page_count` integer;

@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { hasDeveloperAccess } from "@/lib/users";
 import { getProject, listKeys } from "@/lib/api-projects";
+import { getProjectStats, RETENTION_DAYS } from "@/lib/api-events";
+import { countUndelivered, listDeliveries } from "@/lib/api-webhooks";
 import { ProjectSettings } from "./project-settings";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -30,6 +32,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const project = await getProject(id);
   if (!project) notFound();
   const keys = await listKeys(id);
+  const stats = await getProjectStats(id, RETENTION_DAYS);
+  const deliveries = project.webhookUrl ? await listDeliveries(id) : [];
+  const undelivered = project.webhookUrl ? await countUndelivered(project) : 0;
 
   return (
     <ProjectSettings
@@ -39,6 +44,35 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         allowedOrigins: project.allowedOrigins,
         status: project.status,
         defaultSettings: project.defaultSettings ?? {},
+      }}
+      stats={{
+        totals: stats.totals,
+        documents: stats.documents.map((d) => ({
+          id: d.internalId,
+          externalId: d.document.id,
+          title: d.document.title,
+          views: d.views,
+          pageViews: d.pageViews,
+          linkClicks: d.linkClicks,
+          lastViewedAt: d.lastViewedAt ? formatDate(new Date(d.lastViewedAt)) : null,
+        })),
+      }}
+      webhook={{
+        url: project.webhookUrl,
+        secret: project.webhookSecret,
+        failures: project.webhookFailures,
+        nextAttemptAt: formatDate(project.webhookNextAttemptAt),
+        undelivered,
+        deliveries: deliveries.map((d) => ({
+          id: d.id,
+          attemptedAt: formatDate(d.attemptedAt)!,
+          eventCount: d.eventCount,
+          isTest: d.isTest,
+          success: d.success,
+          statusCode: d.statusCode,
+          error: d.error,
+          durationMs: d.durationMs,
+        })),
       }}
       keys={keys.map((k) => ({
         id: k.id,

@@ -199,6 +199,36 @@ export async function getFlipbookStats(flipbookId: string) {
   const totalViews = totalRows[0]?.value ?? 0;
 
   const views = await db.select().from(schema.flipbookViews).where(eq(schema.flipbookViews.flipbookId, flipbookId));
+  const pageEvents = await db
+    .select()
+    .from(schema.flipbookPageEvents)
+    .where(eq(schema.flipbookPageEvents.flipbookId, flipbookId));
+  const linkClicks = await db
+    .select()
+    .from(schema.flipbookLinkClicks)
+    .where(eq(schema.flipbookLinkClicks.flipbookId, flipbookId));
+
+  return computeViewStats({ totalViews, views, pageEvents, linkClicks, pageCount: flipbook?.pageCount ?? 0 });
+}
+
+/**
+ * The dashboard's stats for one document, from its raw views, page events and link clicks —
+ * shared by our own flipbooks and external projects' documents. pageCount 0 means unknown (no
+ * completion rate).
+ */
+export function computeViewStats({
+  totalViews,
+  views,
+  pageEvents,
+  linkClicks,
+  pageCount,
+}: {
+  totalViews: number;
+  views: Array<{ viewedAt: Date; deviceType: string | null; browser: string | null; country: string | null; region: string | null }>;
+  pageEvents: Array<{ viewId: string; pageNumber: number; occurredAt: Date }>;
+  linkClicks: Array<{ url: string }>;
+  pageCount: number;
+}) {
 
   // Every one of the last 30 (London) days, zeros included, so the chart is a real timeline.
   const byDay = new Map<string, number>(lastLondonDateKeys(30).map((day) => [day, 0]));
@@ -224,16 +254,6 @@ export async function getFlipbookStats(flipbookId: string) {
     byWeekday.set(weekday, (byWeekday.get(weekday) ?? 0) + 1);
   }
 
-  const pageEvents = await db
-    .select()
-    .from(schema.flipbookPageEvents)
-    .where(eq(schema.flipbookPageEvents.flipbookId, flipbookId));
-
-  const linkClicks = await db
-    .select()
-    .from(schema.flipbookLinkClicks)
-    .where(eq(schema.flipbookLinkClicks.flipbookId, flipbookId));
-
   const pageReachedBy = new Map<number, Set<string>>();
   const sessions = new Map<string, { maxPage: number; minAt: Date; maxAt: Date; eventCount: number }>();
 
@@ -255,7 +275,6 @@ export async function getFlipbookStats(flipbookId: string) {
   }
 
   const sessionsWithEvents = sessions.size;
-  const pageCount = flipbook?.pageCount ?? 0;
 
   // Every page, including ones nobody reached — those zeros are exactly where readers dropped off.
   const lastPage = Math.max(pageCount, ...pageReachedBy.keys());
