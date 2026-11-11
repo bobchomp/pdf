@@ -8,12 +8,14 @@ export function PdfPage({
   doc,
   pageNumber,
   shouldRender,
-  viewId,
+  zoomable = true,
+  onLinkClick,
 }: {
   doc: PDFDocumentProxy;
   pageNumber: number;
   shouldRender: boolean;
-  viewId?: string | null;
+  zoomable?: boolean;
+  onLinkClick?: (pageNumber: number, url: string) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [rendered, setRendered] = useState(false);
@@ -53,7 +55,7 @@ export function PdfPage({
     // since react-pageflip can reparent these nodes internally for its flip animation — a
     // per-page React event handler can't reliably win the propagation race against its own
     // native listeners, but a single ancestor-level capture listener always fires first.
-    <div className="relative flex h-full w-full cursor-zoom-in items-center justify-center bg-white" data-page-number={pageNumber}>
+    <div className={`relative flex h-full w-full items-center justify-center bg-white ${zoomable ? "cursor-zoom-in" : ""}`} data-page-number={pageNumber}>
       {/*
         The canvas is rendered at this page's own real aspect ratio, which can differ slightly
         from the book's overall box (derived from page 1). Locking this wrapper to that same
@@ -85,14 +87,7 @@ export function PdfPage({
               width: `${link.widthPct}%`,
               height: `${link.heightPct}%`,
             }}
-            onClick={() => {
-              if (!viewId) return;
-              fetch("/api/public/link-clicks", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ viewId, pageNumber, url: link.url }),
-              }).catch(() => {});
-            }}
+            onClick={() => onLinkClick?.(pageNumber, link.url)}
           />
         ))}
       </div>

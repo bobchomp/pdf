@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { getFrameAncestorsForToken } from "@/lib/api-viewer";
 
-export default auth((req) => {
+export default auth(async (req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
+
+  // The hosted viewer may only be framed by the websites its project lists — enforced by the
+  // browser through frame-ancestors (an unknown token gets none, so only this site can frame it).
+  if (pathname.startsWith("/v1/view/")) {
+    const token = pathname.slice("/v1/view/".length);
+    const origins = await getFrameAncestorsForToken(token);
+    const res = NextResponse.next();
+    res.headers.set("Content-Security-Policy", `frame-ancestors 'self' ${origins.join(" ")}`.trim());
+    res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.headers.set("X-Robots-Tag", "noindex");
+    return res;
+  }
 
   const isProtected = pathname.startsWith("/dashboard") || pathname === "/reset-password";
 
@@ -36,5 +49,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/reset-password"],
+  matcher: ["/dashboard/:path*", "/reset-password", "/v1/view/:path*"],
 };

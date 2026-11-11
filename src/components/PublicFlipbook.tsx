@@ -25,6 +25,10 @@ type PublicFlipbook = {
   unlocked: boolean;
 };
 
+function postEvent(path: string, body: Record<string, unknown>) {
+  fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
+}
+
 export function PublicFlipbook({ slug, embed = false }: { slug: string; embed?: boolean }) {
   const [flipbook, setFlipbook] = useState<PublicFlipbook | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -152,7 +156,8 @@ export function PublicFlipbook({ slug, embed = false }: { slug: string; embed?: 
     <div className="h-dvh w-full overflow-hidden">
       <FlipbookViewer
         pdfUrl={pdfUrl}
-        viewId={viewId}
+        onPageView={viewId ? (pageNumber) => postEvent("/api/public/page-events", { viewId, pageNumber }) : undefined}
+        onLinkClick={viewId ? (pageNumber, url) => postEvent("/api/public/link-clicks", { viewId, pageNumber, url }) : undefined}
         pageCount={flipbook.pageCount}
         title={flipbook.title}
         themeColor={flipbook.themeColor}

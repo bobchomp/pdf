@@ -4,10 +4,18 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Switch } from "@/components/Switch";
+import type { ProjectDefaultSettings } from "@/lib/viewer-settings";
+import { DefaultSettings } from "./default-settings";
 
 const noopSubscribe = () => () => {};
 
-type Project = { id: string; name: string; allowedOrigins: string[]; status: "active" | "disabled" };
+type Project = {
+  id: string;
+  name: string;
+  allowedOrigins: string[];
+  status: "active" | "disabled";
+  defaultSettings: ProjectDefaultSettings;
+};
 type Key = { id: string; name: string; keyPrefix: string; createdAt: string; lastUsedAt: string | null; revoked: boolean };
 
 const inputClass =
@@ -15,6 +23,7 @@ const inputClass =
 const cardClass = "rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_1px_3px_rgba(16,24,40,0.05)]";
 const primaryButtonClass =
   "rounded-[9px] bg-navy-900 px-5 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:bg-navy-700 disabled:opacity-50";
+const preClass = "mt-3 overflow-x-auto rounded-[9px] bg-gray-50 px-4 py-3 font-mono text-[12.5px] text-gray-800";
 const outlineButtonClass =
   "rounded-[9px] border border-gray-300 px-4 py-2.5 text-[13.5px] font-semibold text-gray-700 transition-colors hover:bg-gray-50";
 
@@ -93,7 +102,7 @@ export function ProjectSettings({ project, keys }: { project: Project; keys: Key
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete the project "${project.name}" and all its keys? Anything using them will stop working. This can't be undone.`)) return;
+    if (!confirm(`Delete the project "${project.name}" with its keys, documents and stats? Anything using them will stop working. This can't be undone.`)) return;
     const res = await fetch(`/api/developer/projects/${project.id}`, { method: "DELETE" });
     if (res.ok) router.push("/dashboard/developers");
     else setMessage({ text: "Failed to delete project.", error: true });
@@ -249,16 +258,38 @@ export function ProjectSettings({ project, keys }: { project: Project; keys: Key
       </section>
 
       <section className={cardClass}>
-        <h2 className="text-[15px] font-semibold text-navy-900">Test a key</h2>
-        <p className="mt-1 text-xs text-gray-400">Run this from a terminal or your project&apos;s server. It should return this project&apos;s details.</p>
-        <pre className="mt-3 overflow-x-auto rounded-[9px] bg-gray-50 px-4 py-3 font-mono text-[12.5px] text-gray-800">
-          {`curl ${origin}/api/v1/project \\\n  -H "Authorization: Bearer YOUR_KEY"`}
+        <h2 className="text-[15px] font-semibold text-navy-900">Display settings</h2>
+        <p className="mt-1 text-xs leading-relaxed text-gray-400">
+          How this project&apos;s documents look by default. Your project can override any of these for a single document
+          when it asks for a viewer link.
+        </p>
+        <DefaultSettings projectId={project.id} defaults={project.defaultSettings} />
+      </section>
+
+      <section className={cardClass}>
+        <h2 className="text-[15px] font-semibold text-navy-900">Try it</h2>
+        <p className="mt-1 text-xs leading-relaxed text-gray-400">
+          Run these from a terminal or your project&apos;s server. The first checks your key; the second gets a viewer link for a
+          PDF.
+        </p>
+        <pre className={preClass}>{`curl ${origin}/api/v1/project \\\n  -H "Authorization: Bearer YOUR_KEY"`}</pre>
+        <pre className={preClass}>
+          {`curl -X POST ${origin}/api/v1/viewer-tokens \\\n  -H "Authorization: Bearer YOUR_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"document": {"id": "spring-2026", "title": "Spring newsletter", "url": "https://files.example.com/spring.pdf"}}'`}
         </pre>
+        <p className="mt-3 text-xs leading-relaxed text-gray-500">
+          Put the <code className="font-mono">url</code> it returns in an iframe on one of this project&apos;s websites:
+        </p>
+        <pre className={preClass}>{`<iframe src="VIEWER_URL" allow="fullscreen"\n  style="width: 100%; height: 720px; border: 0"></iframe>`}</pre>
+        <p className="mt-3 text-xs leading-relaxed text-gray-500">
+          The PDF stays in your project&apos;s own storage, but the viewer loads it from this site, so that storage must allow{" "}
+          <code className="font-mono">{origin}</code> to fetch it (a CORS rule allowing GET from this origin). Links last a day
+          by default; set <code className="font-mono">expiresIn</code> (in seconds, up to 30 days) to change that.
+        </p>
       </section>
 
       <section className={cardClass}>
         <h2 className="text-[15px] font-semibold text-navy-900">Delete project</h2>
-        <p className="mt-1 text-xs text-gray-400">Permanently removes this project and all its keys.</p>
+        <p className="mt-1 text-xs text-gray-400">Permanently removes this project, its keys, and the documents and stats recorded for it.</p>
         <button
           onClick={handleDelete}
           className="mt-4 rounded-[9px] border border-red-200 px-4 py-2.5 text-[13.5px] font-semibold text-red-600 transition-colors hover:bg-red-50"

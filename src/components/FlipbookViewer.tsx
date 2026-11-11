@@ -8,6 +8,7 @@ import { loadPdf } from "@/lib/pdf-client";
 import { PdfPage } from "@/components/PdfPage";
 import { PdfZoomOverlay, ZOOM_DURATION_MS } from "@/components/PdfZoomOverlay";
 import { IconChevronLeft, IconChevronRight, IconDownload, IconPrint, IconFullscreen } from "@/components/icons";
+import { cssUrl } from "@/lib/viewer-settings";
 
 const HTMLFlipBook = dynamic(() => import("react-pageflip"), { ssr: false }) as unknown as React.ComponentType<
   Record<string, unknown>
@@ -45,36 +46,58 @@ function coverShiftDirection(currentPage: number, pageCount: number): "left" | "
 
 export function FlipbookViewer({
   pdfUrl,
-  viewId,
-  pageCount,
+  pageCount: knownPageCount,
   title,
   themeColor,
+  headerColor = themeColor,
+  headerTextColor = "#ffffff",
   backgroundImageUrl,
   backgroundFit = "contain",
   backgroundPosition = "center",
   logoUrl,
   logoLinkUrl,
   showToolbar,
+  showTitle = true,
   allowDownload,
   allowPrint,
+  showFullscreen = true,
+  showPageArrows = true,
+  enableZoom = true,
+  startPage = 1,
+  onPageView,
+  onLinkClick,
 }: {
   pdfUrl: string;
-  viewId?: string | null;
-  pageCount: number;
+  /** Known up front for our own flipbooks; read from the PDF itself when not given. */
+  pageCount?: number;
   title: string;
+  /** The background colour. */
   themeColor: string;
+  headerColor?: string;
+  headerTextColor?: string;
   backgroundImageUrl?: string | null;
   backgroundFit?: "contain" | "cover";
   backgroundPosition?: string;
   logoUrl?: string | null;
   logoLinkUrl?: string | null;
   showToolbar: boolean;
+  showTitle?: boolean;
   allowDownload: boolean;
   allowPrint: boolean;
+  showFullscreen?: boolean;
+  showPageArrows?: boolean;
+  enableZoom?: boolean;
+  /** 1-based. */
+  startPage?: number;
+  /** Called with a 1-based page number each time a page is shown, including the first. */
+  onPageView?: (pageNumber: number) => void;
+  onLinkClick?: (pageNumber: number, url: string) => void;
 }) {
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
+  // The 0-based page the book opens on; fixed once the PDF loads (react-pageflip reads it once).
+  const [initialPage, setInitialPage] = useState(0);
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
   const [pageAspect, setPageAspect] = useState(DEFAULT_PAGE_ASPECT);
   const [wrapperWidth, setWrapperWidth] = useState<number | null>(null);
@@ -93,12 +116,22 @@ export function FlipbookViewer({
   const stageRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const flipBookRef = useRef<{ pageFlip: () => PageFlipController } | null>(null);
+  const pageCount = knownPageCount || doc?.numPages || 0;
+  // Callers usually pass fresh closures each render; a ref keeps the effects below from re-running.
+  const onPageViewRef = useRef(onPageView);
+  useEffect(() => {
+    onPageViewRef.current = onPageView;
+  }, [onPageView]);
 
   useEffect(() => {
     let cancelled = false;
     loadPdf(pdfUrl)
       .then((loaded) => {
-        if (!cancelled) setDoc(loaded);
+        if (cancelled) return;
+        const first = Math.min(Math.max(startPage - 1, 0), Math.max((knownPageCount || loaded.numPages) - 1, 0));
+        setDoc(loaded);
+        setInitialPage(first);
+        setCurrentPage(first);
       })
       .catch(() => {
         if (!cancelled) setError("Failed to load this PDF. The link may have expired — try reloading the page.");
@@ -106,6 +139,8 @@ export function FlipbookViewer({
     return () => {
       cancelled = true;
     };
+    // startPage and the page count only matter for the first page shown, when the PDF arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfUrl]);
 
   // Read the PDF's real page proportions so the book isn't forced into an arbitrary 5:7 box.
@@ -174,6 +209,7 @@ export function FlipbookViewer({
 
     // Returns whether a page was found at this point (and zoom opened).
     function zoomAtPoint(x: number, y: number) {
+      if (!enableZoom) return false;
       // react-pageflip overlays its own decorative siblings (e.g. a shadow div) on top of the
       // actual page content, so the literal event target often isn't a descendant of our page
       // element — check the whole stack of elements at this point instead.
@@ -255,20 +291,16 @@ export function FlipbookViewer({
       el.removeEventListener("mousedown", handleMouseDown, { capture: true });
       el.removeEventListener("click", handleClick, { capture: true });
     };
-  }, []);
+  }, [enableZoom]);
 
   // Record the opening page as viewed once the book is ready — onFlip only fires on later
   // flips, so without this the page-engagement funnel would never show anyone reaching page 1.
   const recordedInitialPageRef = useRef(false);
   useEffect(() => {
-    if (recordedInitialPageRef.current || doc === null || wrapperWidth === null || !viewId) return;
+    if (recordedInitialPageRef.current || doc === null || wrapperWidth === null || !onPageViewRef.current) return;
     recordedInitialPageRef.current = true;
-    fetch("/api/public/page-events", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ viewId, pageNumber: 1 }),
-    }).catch(() => {});
-  }, [doc, wrapperWidth, viewId]);
+    onPageViewRef.current(currentPage + 1);
+  }, [doc, wrapperWidth, currentPage]);
 
   // Left/right arrow keys flip pages, unless the user is typing somewhere (e.g. the password
   // form on a private flipbook, or — for an embed — some other field on the host page).
@@ -332,25 +364,48 @@ export function FlipbookViewer({
       )
     : NAV_BUTTON_MIN_OFFSET;
 
-  function recordPageFlip(pageNumber: number) {
-    if (!viewId) return;
-    fetch("/api/public/page-events", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ viewId, pageNumber }),
-    }).catch(() => {});
+  // Download and print use the PDF bytes already loaded, as a same-origin blob: the PDF usually
+  // lives on another domain (R2, or an external project's storage), where the browser ignores a
+  // link's download attribute and would just navigate to it instead.
+  async function pdfBlobUrl() {
+    const data = await doc!.getData();
+    return URL.createObjectURL(new Blob([data as BlobPart], { type: "application/pdf" }));
   }
 
-  function handleDownload() {
+  async function handleDownload() {
+    if (!doc) return;
+    const url = await pdfBlobUrl();
     const a = document.createElement("a");
-    a.href = pdfUrl;
-    a.download = `${title || "document"}.pdf`;
+    a.href = url;
+    a.download = `${(title || "document").replace(/[\\/:*?"<>|]+/g, " ").trim() || "document"}.pdf`;
     a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
-  function handlePrint() {
-    const win = window.open(pdfUrl, "_blank");
-    win?.addEventListener("load", () => win.print());
+  async function handlePrint() {
+    if (!doc) return;
+    // Phones can't print a PDF from inside a page, so they get it in a new tab to print or share
+    // from there — opened before the await so popup blockers still see it as part of the tap.
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      const win = window.open("", "_blank");
+      if (win) win.location.href = await pdfBlobUrl();
+      return;
+    }
+    const url = await pdfBlobUrl();
+    document.getElementById("flipbook-print-frame")?.remove();
+    const frame = document.createElement("iframe");
+    frame.id = "flipbook-print-frame";
+    frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+    frame.onload = () => {
+      try {
+        frame.contentWindow?.focus();
+        frame.contentWindow?.print();
+      } catch {
+        window.open(url, "_blank");
+      }
+    };
+    frame.src = url;
+    document.body.appendChild(frame);
   }
 
   const atFirstPage = currentPage === 0;
@@ -377,7 +432,7 @@ export function FlipbookViewer({
         isReady
           ? {
               backgroundColor: themeColor,
-              backgroundImage: backgroundImageUrl ? `url("${backgroundImageUrl}")` : undefined,
+              backgroundImage: backgroundImageUrl ? cssUrl(backgroundImageUrl) : undefined,
               backgroundSize: backgroundFit,
               backgroundPosition,
               backgroundRepeat: "no-repeat",
@@ -387,28 +442,28 @@ export function FlipbookViewer({
     >
       {showToolbar && isReady && (
         <div
-          className="flex w-full shrink-0 items-center justify-end px-4 py-3 text-sm text-white/90 sm:justify-between"
-          style={{ backgroundColor: themeColor }}
+          className={`flex w-full shrink-0 items-center justify-end px-4 py-3 text-sm ${showTitle ? "sm:justify-between" : ""}`}
+          style={{ backgroundColor: headerColor, color: headerTextColor }}
         >
-          <span className="hidden truncate font-medium sm:inline">{title}</span>
+          {showTitle && <span className="hidden truncate font-medium sm:inline">{title}</span>}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
               <button
                 onClick={() => flipBookRef.current?.pageFlip()?.flipPrev()}
                 disabled={atFirstPage || zoom !== null}
                 aria-label="Previous page"
-                className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20 disabled:opacity-30"
+                className="flex h-7 w-7 items-center justify-center rounded bg-current/10 hover:bg-current/20 disabled:opacity-30"
               >
                 <IconChevronLeft size={15} />
               </button>
-              <span className="px-1 tabular-nums text-white/60">
+              <span className="px-1 tabular-nums opacity-60">
                 {currentPage + 1} / {pageCount}
               </span>
               <button
                 onClick={() => flipBookRef.current?.pageFlip()?.flipNext()}
                 disabled={atLastPage || zoom !== null}
                 aria-label="Next page"
-                className="flex h-7 w-7 items-center justify-center rounded bg-white/10 hover:bg-white/20 disabled:opacity-30"
+                className="flex h-7 w-7 items-center justify-center rounded bg-current/10 hover:bg-current/20 disabled:opacity-30"
               >
                 <IconChevronRight size={15} />
               </button>
@@ -417,7 +472,7 @@ export function FlipbookViewer({
               <button
                 onClick={handlePrint}
                 aria-label="Print"
-                className="flex h-7 items-center gap-1.5 rounded bg-white/10 px-2.5 hover:bg-white/20"
+                className="flex h-7 items-center gap-1.5 rounded bg-current/10 px-2.5 hover:bg-current/20"
               >
                 <IconPrint size={15} />
                 <span className="hidden sm:inline">Print</span>
@@ -427,20 +482,22 @@ export function FlipbookViewer({
               <button
                 onClick={handleDownload}
                 aria-label="Download"
-                className="flex h-7 items-center gap-1.5 rounded bg-white/10 px-2.5 hover:bg-white/20"
+                className="flex h-7 items-center gap-1.5 rounded bg-current/10 px-2.5 hover:bg-current/20"
               >
                 <IconDownload size={15} />
                 <span className="hidden sm:inline">Download</span>
               </button>
             )}
-            <button
-              onClick={toggleFullscreen}
-              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-              className="flex h-7 items-center gap-1.5 rounded bg-white/10 px-2.5 hover:bg-white/20"
-            >
-              <IconFullscreen size={15} />
-              <span className="hidden sm:inline">{isFullscreen ? "Exit full screen" : "Full screen"}</span>
-            </button>
+            {showFullscreen && (
+              <button
+                onClick={toggleFullscreen}
+                aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                className="flex h-7 items-center gap-1.5 rounded bg-current/10 px-2.5 hover:bg-current/20"
+              >
+                <IconFullscreen size={15} />
+                <span className="hidden sm:inline">{isFullscreen ? "Exit full screen" : "Full screen"}</span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -450,6 +507,8 @@ export function FlipbookViewer({
 
         {isReady && (
           <>
+            {showPageArrows && (
+            <>
             <button
               onClick={() => flipBookRef.current?.pageFlip()?.flipPrev()}
               disabled={atFirstPage}
@@ -468,6 +527,8 @@ export function FlipbookViewer({
             >
               <IconChevronRight size={20} />
             </button>
+            </>
+            )}
 
             <div
               style={{
@@ -494,7 +555,7 @@ export function FlipbookViewer({
                 mobileScrollSupport={true}
                 className="shadow-2xl"
                 style={flipBookStyle}
-                startPage={0}
+                startPage={initialPage}
                 drawShadow={true}
                 flippingTime={500}
                 usePortrait={true}
@@ -507,7 +568,7 @@ export function FlipbookViewer({
                 disableFlipByClick={true}
                 onFlip={(e: { data: number }) => {
                   setCurrentPage(e.data);
-                  recordPageFlip(e.data + 1);
+                  onPageViewRef.current?.(e.data + 1);
                 }}
                 onInit={(e: { data: { mode: "portrait" | "landscape" } }) => setOrientation(e.data.mode)}
                 onChangeOrientation={(e: { data: "portrait" | "landscape" }) => setOrientation(e.data)}
@@ -518,7 +579,8 @@ export function FlipbookViewer({
                       doc={doc!}
                       pageNumber={pageNumber}
                       shouldRender={Math.abs(pageNumber - 1 - currentPage) <= RENDER_WINDOW}
-                      viewId={viewId}
+                      zoomable={enableZoom}
+                      onLinkClick={onLinkClick}
                     />
                   </div>
                 ))}

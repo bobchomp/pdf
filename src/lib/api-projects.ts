@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { db, schema } from "@/db/client";
 import { newId } from "@/lib/ids";
+import type { ProjectDefaultSettings } from "@/lib/viewer-settings";
 
 const KEY_PREFIX = "fbsk_"; // "flipbook secret key"
 const DISPLAY_PREFIX_LENGTH = KEY_PREFIX.length + 6;
@@ -42,6 +43,7 @@ export async function createProject(input: { name: string; allowedOrigins: strin
     id,
     name: input.name,
     allowedOrigins: input.allowedOrigins,
+    defaultSettings: {},
     status: "active",
     createdAt: now,
     updatedAt: now,
@@ -51,7 +53,7 @@ export async function createProject(input: { name: string; allowedOrigins: strin
 
 export async function updateProject(
   id: string,
-  patch: Partial<{ name: string; allowedOrigins: string[]; status: "active" | "disabled" }>
+  patch: Partial<{ name: string; allowedOrigins: string[]; status: "active" | "disabled"; defaultSettings: ProjectDefaultSettings }>
 ) {
   await db
     .update(schema.apiProjects)
@@ -61,6 +63,11 @@ export async function updateProject(
 }
 
 export async function deleteProject(id: string) {
+  // Children first (no cascading deletes in this schema).
+  await db.delete(schema.apiViewEvents).where(eq(schema.apiViewEvents.projectId, id));
+  await db.delete(schema.apiViews).where(eq(schema.apiViews.projectId, id));
+  await db.delete(schema.apiViewerTokens).where(eq(schema.apiViewerTokens.projectId, id));
+  await db.delete(schema.apiDocuments).where(eq(schema.apiDocuments.projectId, id));
   await db.delete(schema.apiKeys).where(eq(schema.apiKeys.projectId, id));
   await db.delete(schema.apiProjects).where(eq(schema.apiProjects.id, id));
 }

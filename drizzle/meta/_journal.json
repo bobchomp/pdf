@@ -64,6 +64,13 @@
       "when": 1794406727952,
       "tag": "0008_yellow_toro",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1794407233164,
+      "tag": "0009_mushy_strong_guy",
+      "breakpoints": true
     }
   ]
 }

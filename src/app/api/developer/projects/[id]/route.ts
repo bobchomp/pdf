@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/require-session";
 import { deleteProject, getProject, updateProject } from "@/lib/api-projects";
 import { parseOrigins, updateProjectSchema } from "@/lib/api-project-input";
+import { describeZodError } from "@/lib/viewer-settings";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error } = await requireAdmin();
@@ -12,7 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const parsed = updateProjectSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return Response.json({ error: parsed.error.issues[0]?.message ?? "Invalid update." }, { status: 400 });
+    return Response.json({ error: describeZodError(parsed.error) }, { status: 400 });
   }
 
   const { allowedOrigins, ...rest } = parsed.data;

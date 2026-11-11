@@ -32,7 +32,13 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
   return (
     <ProjectSettings
-      project={{ id: project.id, name: project.name, allowedOrigins: project.allowedOrigins, status: project.status }}
+      project={{
+        id: project.id,
+        name: project.name,
+        allowedOrigins: project.allowedOrigins,
+        status: project.status,
+        defaultSettings: project.defaultSettings ?? {},
+      }}
       keys={keys.map((k) => ({
         id: k.id,
         name: k.name,
