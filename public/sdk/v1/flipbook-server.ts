@@ -95,6 +95,8 @@ export type Project = {
   id: string;
   name: string;
   allowedOrigins: string[];
+  /** Viewer links only show the document when embedded on allowedOrigins (set in the dashboard). */
+  embedOnly: boolean;
   defaultSettings: ProjectDefaultSettings;
 };
 

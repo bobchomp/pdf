@@ -74,18 +74,19 @@ run(async () => {
   check('React: unmounts cleanly', !(await page.$('iframe')));
   await page.screenshot({ path: `${dir}/p4-react.png` });
 
-  // ---- Viewer opened directly (not framed) posts nothing and has no errors
+  // ---- Opened directly (not framed): projects are embedded-only by default, so a message, no errors
   const direct = await ctx.newPage();
   direct.on('pageerror', (e) => errors.push(e.message));
   await direct.goto(url);
-  await rendered(direct.mainFrame());
+  check('direct open shows the embedded-only message', (await direct.textContent('body')).includes("only be viewed on the website"));
   await direct.close();
 
   // ---- Events/stats through the helpers, after the views above
   await sleep(500);
   const ev = JSON.parse(tsx('sdk-events.ts', key).trim().split('\n').pop());
   check('listEvents paging + allEvents iterates everything in order', ev.page1 === 2 && ev.hasMore && ev.all.length > 5 && ev.all.every((s, i) => i === 0 || s > ev.all[i - 1]), JSON.stringify(ev));
-  check('documentId filter + getDocumentStats', ev.docOnly && ev.docViews >= 4 && ev.pages >= 2);
+  // Three embedded views above (auto-mount, Flipbook.mount, React); the direct open is blocked and not counted.
+  check('documentId filter + getDocumentStats', ev.docOnly && ev.docViews === 3 && ev.pages >= 2, JSON.stringify(ev));
 
   // ---- Docs and OpenAPI
   const docs = await ctx.newPage();

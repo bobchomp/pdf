@@ -15,6 +15,7 @@ type Project = {
   name: string;
   allowedOrigins: string[];
   status: "active" | "disabled";
+  embedOnly: boolean;
   defaultSettings: ProjectDefaultSettings;
 };
 type Stats = {
@@ -54,6 +55,10 @@ export function ProjectSettings({
   const router = useRouter();
   const [name, setName] = useState(project.name);
   const [origins, setOrigins] = useState(project.allowedOrigins.join("\n"));
+  // Switch states come from each save's reply, so a second quick click acts on the new state
+  // rather than on the page's props, which only update when the refresh lands.
+  const [status, setStatus] = useState(project.status);
+  const [embedOnly, setEmbedOnly] = useState(project.embedOnly);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [keyName, setKeyName] = useState("");
@@ -82,6 +87,8 @@ export function ProjectSettings({
       }
       // Show the addresses as the server normalized them (e.g. "example.com" → "https://example.com").
       setOrigins(data.project.allowedOrigins.join("\n"));
+      setStatus(data.project.status);
+      setEmbedOnly(data.project.embedOnly);
       setMessage({ text: success, error: false });
       router.refresh();
     } finally {
@@ -148,7 +155,7 @@ export function ProjectSettings({
         </Link>
         <h1 className="mt-2 flex items-center gap-3 text-[26px] font-bold tracking-tight text-navy-900">
           {project.name}
-          {project.status === "disabled" && (
+          {status === "disabled" && (
             <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-500">Disabled</span>
           )}
         </h1>
@@ -215,10 +222,27 @@ export function ProjectSettings({
             <p className="mt-1 text-xs text-gray-400">Turning this off stops every one of this project&apos;s keys working until you turn it back on.</p>
           </div>
           <Switch
-            checked={project.status === "active"}
+            checked={status === "active"}
             disabled={saving}
             onChange={(on) => patch({ status: on ? "active" : "disabled" }, on ? "Project enabled." : "Project disabled.")}
             label="Project enabled"
+          />
+        </div>
+        <div className="mt-5 flex items-center justify-between gap-4 border-t border-gray-100 pt-5">
+          <div>
+            <h2 className="text-[15px] font-semibold text-navy-900">Only show documents on these websites</h2>
+            <p className="mt-1 text-xs leading-relaxed text-gray-400">
+              A viewer link then only works inside this project&apos;s pages. Opened on its own in a browser tab — say, if someone
+              copies and shares it — it shows a message instead of the document.
+            </p>
+          </div>
+          <Switch
+            checked={embedOnly}
+            disabled={saving}
+            onChange={(on) =>
+              patch({ embedOnly: on }, on ? "Viewer links now only work on this project's websites." : "Viewer links can now be opened directly too.")
+            }
+            label="Only show documents on these websites"
           />
         </div>
       </section>

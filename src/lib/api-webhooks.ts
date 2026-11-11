@@ -5,6 +5,7 @@ import { db, schema } from "@/db/client";
 import { newId } from "@/lib/ids";
 import { listEventRows, serializeEvents, type PublicEvent } from "@/lib/api-events";
 import type { ApiProject } from "@/db/schema";
+import { checkPublicHost, PrivateAddressError, postJson } from "@/lib/safe-http";
 
 const BATCH_SIZE = 100;
 const MAX_BATCHES_PER_RUN = 5;
@@ -30,8 +31,15 @@ export function signWebhook(secret: string, body: string, timestamp = Math.floor
 
 const PRIVATE_HOST = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.|\[::1\]|\[f[cd]|\[fe80)/i;
 
-/** Webhooks go to public https addresses (plus local http while developing, outside production). */
-export function validateWebhookUrl(value: string): string | null {
+// Outside production (local development and the test suite) webhooks may go to this machine.
+const allowPrivateWebhooks = () => process.env.NODE_ENV !== "production";
+
+/**
+ * Webhooks go to public https addresses (plus local http while developing, outside production).
+ * The hostname is looked up too: one that points at a private network address is refused here,
+ * and again when each delivery connects (see lib/safe-http).
+ */
+export async function validateWebhookUrl(value: string): Promise<string | null> {
   let url: URL;
   try {
     url = new URL(value);
@@ -40,11 +48,15 @@ export function validateWebhookUrl(value: string): string | null {
   }
   if (url.username || url.password) return "The address can't contain a username or password.";
   const local = PRIVATE_HOST.test(url.hostname);
-  if (process.env.NODE_ENV !== "production" && local) {
+  if (allowPrivateWebhooks() && local) {
     return url.protocol === "http:" || url.protocol === "https:" ? null : "Use a full https:// address.";
   }
   if (url.protocol !== "https:") return "Use a full https:// address.";
   if (local || !url.hostname.includes(".")) return "Use a public address — webhooks can't go to private networks.";
+  if (allowPrivateWebhooks()) return null;
+  const problem = await checkPublicHost(url.hostname);
+  if (problem === "private") return "That address points to a private network — webhooks can only go to public addresses.";
+  if (problem === "unresolvable") return "Couldn't find that address — check the domain name.";
   return null;
 }
 
@@ -54,22 +66,26 @@ async function post(project: ApiProject, events: PublicEvent[], isTest: boolean)
   let statusCode: number | null = null;
   let error: string | null = null;
   try {
-    const res = await fetch(project.webhookUrl!, {
-      method: "POST",
+    // Redirects aren't followed: a 3xx counts as a failure, like any other non-2xx reply.
+    const res = await postJson(project.webhookUrl!, {
+      body,
       headers: {
         "Content-Type": "application/json",
         "User-Agent": "Flipbook-Webhooks/1.0",
         "Flipbook-Signature": signWebhook(project.webhookSecret!, body),
       },
-      body,
-      redirect: "manual",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      timeoutMs: TIMEOUT_MS,
+      allowPrivate: allowPrivateWebhooks(),
     });
     statusCode = res.status;
-    if (!res.ok) error = `Responded with HTTP ${res.status}`;
-    await res.body?.cancel().catch(() => {});
+    if (res.status < 200 || res.status > 299) error = `Responded with HTTP ${res.status}`;
   } catch (err) {
-    error = err instanceof Error && err.name === "TimeoutError" ? `No response within ${TIMEOUT_MS / 1000}s` : "Couldn't connect";
+    error =
+      err instanceof PrivateAddressError
+        ? "Not sent: the address points to a private network"
+        : err instanceof Error && err.name === "TimeoutError"
+          ? `No response within ${TIMEOUT_MS / 1000}s`
+          : "Couldn't connect";
   }
   const success = error === null;
   await db.insert(schema.apiWebhookDeliveries).values({

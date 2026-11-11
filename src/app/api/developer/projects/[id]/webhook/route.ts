@@ -21,7 +21,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const parsed = schemaBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Give the webhook address." }, { status: 400 });
-  const urlError = validateWebhookUrl(parsed.data.url);
+  const urlError = await validateWebhookUrl(parsed.data.url);
   if (urlError) return Response.json({ error: urlError }, { status: 400 });
 
   const isNew = !project.webhookUrl;

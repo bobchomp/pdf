@@ -1,0 +1,1 @@
+ALTER TABLE `api_projects` ADD `embed_only` integer DEFAULT true NOT NULL;

@@ -239,6 +239,10 @@ export function openApiDocument(origin: string) {
             id: { type: "string" },
             name: { type: "string" },
             allowedOrigins: { type: "array", items: { type: "string" } },
+            embedOnly: {
+              type: "boolean",
+              description: "Viewer links only show the document when embedded on allowedOrigins, not opened directly. Set in the dashboard.",
+            },
             defaultSettings: ref("ProjectDefaultSettings"),
           },
         },

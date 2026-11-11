@@ -25,6 +25,7 @@ const suites = [
   // Production mode refuses webhooks to localhost (correctly), so this suite runs on next dev.
   { file: "04-stats-delivery.cjs", server: "dev" },
   { file: "05-developer-kit.cjs", server: "start" },
+  { file: "06-security.cjs", server: "start" },
 ].filter((s) => s.file.includes(filter));
 
 const appEnv = {

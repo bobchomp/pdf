@@ -206,6 +206,12 @@ curl -X POST ${origin}/api/v1/viewer-tokens \\
               {c("http://localhost:3000")} (or your port) while developing. Give it {c('allow="fullscreen"')} so the full screen button
               works.
             </p>
+            <p>
+              By default a viewer link also only works <strong>embedded</strong>: opened on its own in a browser tab (say, copied and
+              shared), it shows “This document can only be viewed on the website it&apos;s published on” instead. Turn off “Only show
+              documents on these websites” on the project&apos;s page if you want links to open directly too. This stops casual sharing
+              of links; it doesn&apos;t make the PDF secret, since visitors&apos; browsers load it from your storage either way.
+            </p>
             <p className="font-semibold text-navy-900">Any website — flipbook.js</p>
             <Code>{`
 <div data-flipbook-url="VIEWER_URL" data-flipbook-height="720"></div>
@@ -266,7 +272,8 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
             <p>
               Set a webhook address on the project&apos;s page in the dashboard to have every event POSTed to your server as it happens,
               so it can store them in your own database. The dashboard shows your <strong>signing secret</strong>, can send a test
-              event, and lists recent deliveries.
+              event, and lists recent deliveries. The address must be public https: one that is, or points through DNS to, a
+              private network address is refused, both when it&apos;s saved and on every delivery.
             </p>
             <Code label="Request body">{`
 {
@@ -289,7 +296,8 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
                 {c("verifyWebhook()")} in flipbook-server.ts does this.
               </li>
               <li>
-                <strong>Reply 2xx</strong> within 10 seconds. Anything else counts as a failure.
+                <strong>Reply 2xx</strong> within 10 seconds. Anything else counts as a failure, including redirects, which
+                aren&apos;t followed.
               </li>
               <li>
                 Events arrive <strong>in order</strong>, up to 100 per request. A failed batch is retried (after 1, 5, 30 minutes, then

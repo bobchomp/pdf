@@ -9,6 +9,7 @@ function projectBody(project: ApiProject) {
     id: project.id,
     name: project.name,
     allowedOrigins: project.allowedOrigins,
+    embedOnly: project.embedOnly,
     defaultSettings: project.defaultSettings ?? {},
   };
 }

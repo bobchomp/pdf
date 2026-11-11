@@ -11,6 +11,7 @@ export const updateProjectSchema = z.object({
   name: name.optional(),
   allowedOrigins: allowedOrigins.optional(),
   status: z.enum(["active", "disabled"]).optional(),
+  embedOnly: z.boolean().optional(),
   defaultSettings: projectDefaultSettingsSchema.optional(),
 });
 

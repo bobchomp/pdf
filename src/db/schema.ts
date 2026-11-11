@@ -151,6 +151,9 @@ export const apiProjects = sqliteTable("api_projects", {
   name: text("name").notNull(),
   // Origins (e.g. "https://example.com") the hosted viewer may be framed by; JSON array.
   allowedOrigins: text("allowed_origins", { mode: "json" }).$type<string[]>().notNull(),
+  // When on, viewer links only show the document inside an iframe on one of allowedOrigins; a
+  // link opened directly in a browser tab shows a message instead.
+  embedOnly: integer("embed_only", { mode: "boolean" }).notNull().default(true),
   // Display settings every viewer token in this project starts from (see lib/viewer-settings).
   defaultSettings: text("default_settings", { mode: "json" }).$type<ProjectDefaultSettings>().notNull().default({}),
 

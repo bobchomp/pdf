@@ -43,6 +43,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         name: project.name,
         allowedOrigins: project.allowedOrigins,
         status: project.status,
+        embedOnly: project.embedOnly,
         defaultSettings: project.defaultSettings ?? {},
       }}
       stats={{

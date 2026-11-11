@@ -53,7 +53,7 @@ export async function createProject(input: { name: string; allowedOrigins: strin
 
 export async function updateProject(
   id: string,
-  patch: Partial<{ name: string; allowedOrigins: string[]; status: "active" | "disabled"; defaultSettings: ProjectDefaultSettings }>
+  patch: Partial<{ name: string; allowedOrigins: string[]; status: "active" | "disabled"; embedOnly: boolean; defaultSettings: ProjectDefaultSettings }>
 ) {
   await db
     .update(schema.apiProjects)
