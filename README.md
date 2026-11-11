@@ -38,3 +38,22 @@ npm run dev
 - `npm run db:generate` / `npm run db:push` — Drizzle migrations against D1
 - `npm run db:studio` — browse the D1 database
 - `npm run seed:user -- <email> <password> <name> [admin|member]` — create a login
+- `npm run test:e2e` — end-to-end tests (after `npm run build`); see below
+
+## Tests
+
+`tests/e2e/` drives the real app in Chromium against a local stand-in for Cloudflare D1 (SQLite
+built from the migrations in `drizzle/`), plus stand-in external sites for the developer API:
+PDF storage, sites that embed the viewer, and a webhook receiver. No Cloudflare account or
+network access to it is needed.
+
+```sh
+npm run build
+npx playwright install chromium      # once
+npm run test:e2e                     # all suites
+npm run test:e2e -- stats            # suites whose name contains "stats"
+```
+
+Screenshots and the app's logs land in `tests/e2e/.output/`. GitHub Actions
+(`.github/workflows/ci.yml`) runs lint, build and these tests on every push to `main` and on
+pull requests.

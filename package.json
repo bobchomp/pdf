@@ -11,7 +11,8 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "seed:user": "tsx scripts/create-user.ts"
+    "seed:user": "tsx scripts/create-user.ts",
+    "test:e2e": "node tests/e2e/run.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",
@@ -37,8 +38,10 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.10",
+    "esbuild": "0.25.12",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "playwright": "1.63.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5"
