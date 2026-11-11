@@ -57,6 +57,13 @@
       "when": 1789483768985,
       "tag": "0007_jazzy_retro_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1794406727952,
+      "tag": "0008_yellow_toro",
+      "breakpoints": true
     }
   ]
 }

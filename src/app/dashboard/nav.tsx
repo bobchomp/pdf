@@ -8,7 +8,8 @@ export function DashboardNav({ isAdmin }: { isAdmin: boolean }) {
   const onPresets = pathname.startsWith("/dashboard/presets");
   const onTeam = pathname.startsWith("/dashboard/admin");
   const onStats = pathname.startsWith("/dashboard/stats");
-  const onFlipbooks = !onPresets && !onTeam && !onStats;
+  const onDevelopers = pathname.startsWith("/dashboard/developers");
+  const onFlipbooks = !onPresets && !onTeam && !onStats && !onDevelopers;
 
   const tabClass = (active: boolean) =>
     `border-b-2 pb-1 text-sm font-semibold transition-colors ${
@@ -29,6 +30,11 @@ export function DashboardNav({ isAdmin }: { isAdmin: boolean }) {
       {isAdmin && (
         <Link href="/dashboard/admin" className={tabClass(onTeam)}>
           Team
+        </Link>
+      )}
+      {isAdmin && (
+        <Link href="/dashboard/developers" className={tabClass(onDevelopers)}>
+          Developers
         </Link>
       )}
     </nav>

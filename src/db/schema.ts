@@ -142,7 +142,40 @@ export const rateLimits = sqliteTable("rate_limits", {
   windowStart: integer("window_start", { mode: "timestamp" }).notNull(),
 });
 
+/** An external app (one of your other projects) allowed to use the flipbook engine. */
+export const apiProjects = sqliteTable("api_projects", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  // Origins (e.g. "https://example.com") the hosted viewer may be framed by; JSON array.
+  allowedOrigins: text("allowed_origins", { mode: "json" }).$type<string[]>().notNull(),
+  status: text("status", { enum: ["active", "disabled"] })
+    .notNull()
+    .default("active"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+/**
+ * Secret API keys for a project. Only a SHA-256 hash of each key is stored (keys are long and
+ * random, so a fast hash is enough — unlike passwords); the key itself is shown once at creation.
+ */
+export const apiKeys = sqliteTable("api_keys", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => apiProjects.id),
+  name: text("name").notNull().default(""),
+  // The first characters of the key, so it can be recognised in the dashboard.
+  keyPrefix: text("key_prefix").notNull(),
+  keyHash: text("key_hash").notNull().unique(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+  revokedAt: integer("revoked_at", { mode: "timestamp" }),
+});
+
 export type User = typeof users.$inferSelect;
+export type ApiProject = typeof apiProjects.$inferSelect;
+export type ApiKey = typeof apiKeys.$inferSelect;
 export type Flipbook = typeof flipbooks.$inferSelect;
 export type FlipbookView = typeof flipbookViews.$inferSelect;
 export type Preset = typeof presets.$inferSelect;

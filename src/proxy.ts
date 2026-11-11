@@ -27,7 +27,7 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
   }
 
-  const isAdminOnly = pathname.startsWith("/dashboard/admin");
+  const isAdminOnly = pathname.startsWith("/dashboard/admin") || pathname.startsWith("/dashboard/developers");
   if (isAdminOnly && req.auth?.user?.role !== "admin") {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
   }
