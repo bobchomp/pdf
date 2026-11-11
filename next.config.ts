@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
       { source: "/reset-password/confirm", headers: clickjackingHeaders },
       { source: "/dashboard/:path*", headers: clickjackingHeaders },
       { source: "/f/:slug*", headers: clickjackingHeaders },
+      { source: "/docs", headers: clickjackingHeaders },
     ];
   },
 };

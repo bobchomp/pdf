@@ -99,3 +99,23 @@ export function describeZodError(error: z.ZodError) {
   }
   return `${issue.path.length ? `${issue.path.join(".")}: ` : ""}${issue.message}`;
 }
+
+/** What each setting does — shown on /docs and in the OpenAPI description. */
+export const SETTING_DESCRIPTIONS: Record<keyof Required<ViewerSettingsInput>, string> = {
+  backgroundColor: "Colour behind the document, as hex (#0f2044).",
+  backgroundImageUrl: "Image behind the document (https). null for none.",
+  backgroundFit: "How the background image fills the space: contain (whole image) or cover (crop to fill).",
+  backgroundPosition: "Which part of the background image stays in view when cropped.",
+  headerColor: "Header bar colour. null to match the background colour.",
+  headerTextColor: "Colour of the header's text and buttons.",
+  showHeader: "Show the header bar (title, page counter and buttons).",
+  showTitle: "Show the document title in the header.",
+  showPrint: "Show the Print button.",
+  showDownload: "Show the Download button.",
+  showFullscreen: "Show the Full screen button.",
+  showPageArrows: "Show the round previous/next arrows beside the document.",
+  enableZoom: "Clicking or tapping a page zooms in on it.",
+  logoUrl: "Logo shown in the bottom-left corner (https). null for none.",
+  logoLinkUrl: "Where clicking the logo goes (opens in a new tab). null for no link.",
+  startPage: "Page to open on (1 = first). Viewer tokens only — not a project default.",
+};

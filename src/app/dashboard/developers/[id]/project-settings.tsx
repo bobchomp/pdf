@@ -343,7 +343,12 @@ export function ProjectSettings({
       </section>
 
       <section className={cardClass}>
-        <h2 className="text-[15px] font-semibold text-navy-900">Try it</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-[15px] font-semibold text-navy-900">Try it</h2>
+          <a href="/docs" className="text-[13px] font-semibold text-blue-600 hover:text-navy-700">
+            Full API docs →
+          </a>
+        </div>
         <p className="mt-1 text-xs leading-relaxed text-gray-400">
           Run these from a terminal or your project&apos;s server. The first checks your key; the second gets a viewer link for a
           PDF.

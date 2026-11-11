@@ -44,7 +44,10 @@ export function ProjectsManager({ projects }: { projects: Project[] }) {
         <h1 className="text-[28px] font-bold tracking-tight text-navy-900">Developers</h1>
         <p className="mt-1 text-sm text-gray-600">
           Projects are your other websites and apps that use this flipbook viewer. Each gets its own API keys and a list of
-          websites it&apos;s allowed to appear on.
+          websites it&apos;s allowed to appear on.{" "}
+          <a href="/docs" className="font-semibold text-blue-600 hover:text-navy-700">
+            API docs →
+          </a>
         </p>
       </div>
 
