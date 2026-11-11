@@ -28,7 +28,18 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+
+      # Only the browser, from Playwright's own download servers. The system libraries it needs
+      # are already on GitHub's runners (they ship Google Chrome), so there's no apt-get step to
+      # depend on Ubuntu's package mirrors. Cached per Playwright version.
+      - name: Get Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - run: npx playwright install chromium
       - run: npm run lint
       - run: npm run build
       - run: npm run test:e2e
