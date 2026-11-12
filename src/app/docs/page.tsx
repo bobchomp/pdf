@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { Logo } from "@/components/Logo";
 import { BUILT_IN_SETTINGS, SETTING_DESCRIPTIONS } from "@/lib/viewer-settings";
 import { integrationPrompt } from "@/lib/ai-prompt";
-import { CopyButton } from "./copy-button";
+import { CopyButton } from "@/components/CopyButton";
 
 export const metadata: Metadata = {
   title: "API docs",
@@ -174,7 +174,8 @@ curl -X POST ${origin}/api/v1/viewer-tokens \\
           <Section id="viewer-tokens" title="Viewer links">
             <p>
               {c("POST /api/v1/viewer-tokens")} — body: {c("document")} ({c("id")}, {c("title")}, {c("url")} — required), {c("settings")}{" "}
-              (optional, below) and {c("expiresIn")} (optional, seconds, 60 to 2592000; default one day).
+              (optional, below), {c("pageUrl")} (optional, the address of the page you&apos;ll show it on) and {c("expiresIn")} (optional,
+              seconds, 60 to 2592000; default one day).
             </p>
             <ul className="list-disc space-y-1.5 pl-5">
               <li>
@@ -182,6 +183,10 @@ curl -X POST ${origin}/api/v1/viewer-tokens \\
                 title and address on file.
               </li>
               <li>{c("document.url")} must be a full https address. The viewer fetches it from the visitor&apos;s browser.</li>
+              <li>
+                {c("pageUrl")} is the page the viewer will be embedded on, and must be on one of your project&apos;s websites. If
+                someone opens the viewer link on its own, they&apos;re sent there. Worth always passing.
+              </li>
               <li>
                 Create a link when you render the page, or cache one and renew it before {c("expiresAt")}. An expired link shows
                 “This document link has expired”.
@@ -193,6 +198,7 @@ curl -X POST ${origin}/api/v1/viewer-tokens \\
   "url": "${origin}/v1/view/vt_…",
   "expiresAt": "2026-11-12T14:00:00.000Z",
   "document": { "id": "spring-2026", "title": "Spring newsletter", "url": "https://files.example.com/spring.pdf" },
+  "pageUrl": "https://youth.example.com/newsletters/spring-2026",
   "settings": { "backgroundColor": "#0f2044", "showDownload": true, … }
 }
 `}</Code>
@@ -235,7 +241,8 @@ curl -X POST ${origin}/api/v1/viewer-tokens \\
             </p>
             <p>
               By default a viewer link also only works <strong>embedded</strong>: opened on its own in a browser tab (say, copied and
-              shared), it shows “This document can only be viewed on the website it&apos;s published on” instead. Turn off “Only show
+              shared), it <strong>redirects to where the document is published</strong> — the {c("pageUrl")} given when the link was
+              made, otherwise the page it was last viewed on, otherwise your project&apos;s first website. Turn off “Only show
               documents on these websites” on the project&apos;s page if you want links to open directly too. This stops casual sharing
               of links; it doesn&apos;t make the PDF secret, since visitors&apos; browsers load it from your storage either way.
             </p>

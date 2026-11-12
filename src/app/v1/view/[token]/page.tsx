@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { getViewerToken } from "@/lib/api-viewer";
+import { redirect } from "next/navigation";
+import { getViewerToken, returnUrlFor } from "@/lib/api-viewer";
 import { resolveViewerSettings } from "@/lib/viewer-settings";
 import { ExternalViewer } from "./external-viewer";
 
@@ -43,7 +44,12 @@ export default async function HostedViewerPage({ params }: { params: Promise<{ t
   const h = await headers();
 
   if (found.status !== "ok") return <Unavailable message={messages[found.status]} />;
-  if (found.project.embedOnly && openedDirectly(h.get("sec-fetch-dest"))) return <Unavailable message={messages.embed_only} />;
+  if (found.project.embedOnly && openedDirectly(h.get("sec-fetch-dest"))) {
+    // Opened on its own (e.g. a copied link): send them to where the document is published.
+    const destination = await returnUrlFor(found.token, found.project);
+    if (destination) redirect(destination);
+    return <Unavailable message={messages.embed_only} />;
+  }
 
   // The page embedding the viewer — usually just its origin, per the browser's referrer policy.
   const referrer = h.get("referer") ?? "";

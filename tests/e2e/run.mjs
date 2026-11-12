@@ -26,6 +26,7 @@ const suites = [
   { file: "04-stats-delivery.cjs", server: "dev" },
   { file: "05-developer-kit.cjs", server: "start" },
   { file: "06-security.cjs", server: "start" },
+  { file: "07-schema-check.cjs", server: "start" },
 ].filter((s) => s.file.includes(filter));
 
 const appEnv = {

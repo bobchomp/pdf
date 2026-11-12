@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiError, requireApiKey } from "@/lib/api-auth";
 import { createViewerToken } from "@/lib/api-viewer";
 import { describeZodError, isSafeUrl, resolveViewerSettings, viewerSettingsSchema } from "@/lib/viewer-settings";
+import { isAllowedOrigin } from "@/lib/origins";
 
 const DEFAULT_EXPIRES_IN = 60 * 60 * 24; // 1 day
 const MAX_EXPIRES_IN = 60 * 60 * 24 * 30; // 30 days
@@ -20,6 +21,9 @@ const bodySchema = z
       }, { error: "Describe the PDF to show: { id, title, url }." })
       .strict(),
     settings: viewerSettingsSchema.default({}),
+    // The page the viewer will be embedded on. Someone who opens the viewer link on its own is
+    // sent back here (when the project only allows embedding).
+    pageUrl: z.string().max(2000).refine(isSafeUrl, "Use the full https:// address of the page.").optional(),
     expiresIn: z.number().int().min(60).max(MAX_EXPIRES_IN).default(DEFAULT_EXPIRES_IN),
   })
   .strict();
@@ -37,8 +41,11 @@ export async function POST(req: Request) {
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) return apiError(400, "invalid_request", describeZodError(parsed.error));
 
-  const { document, settings, expiresIn } = parsed.data;
-  const { token, expiresAt } = await createViewerToken(project.id, { document, settings, expiresInSeconds: expiresIn });
+  const { document, settings, pageUrl, expiresIn } = parsed.data;
+  if (pageUrl && !isAllowedOrigin(pageUrl, project.allowedOrigins)) {
+    return apiError(400, "invalid_request", "pageUrl: That page isn't on one of this project's websites.");
+  }
+  const { token, expiresAt } = await createViewerToken(project.id, { document, settings, pageUrl: pageUrl ?? null, expiresInSeconds: expiresIn });
 
   return Response.json(
     {
@@ -46,6 +53,7 @@ export async function POST(req: Request) {
       url: `${new URL(req.url).origin}/v1/view/${token}`,
       expiresAt: expiresAt.toISOString(),
       document: { id: document.id, title: document.title, url: document.url },
+      pageUrl: pageUrl ?? null,
       settings: resolveViewerSettings(project.defaultSettings ?? {}, settings),
     },
     { status: 201, headers: { "Cache-Control": "no-store" } }

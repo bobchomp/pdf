@@ -86,6 +86,13 @@ export function openApiDocument(origin: string) {
                       },
                     },
                     settings: { ...ref("ViewerSettings"), description: "Overrides the project's defaults for this link." },
+                    pageUrl: {
+                      type: "string",
+                      format: "uri",
+                      maxLength: 2000,
+                      description:
+                        "The page the viewer will be embedded on; must be on one of the project's websites. Someone who opens the viewer URL on its own is redirected here.",
+                    },
                     expiresIn: { type: "integer", minimum: 60, maximum: 2592000, default: 86400, description: "Seconds until the link stops working." },
                   },
                 },
@@ -106,6 +113,7 @@ export function openApiDocument(origin: string) {
                   url: { type: "string", format: "uri", description: "The viewer URL to embed." },
                   expiresAt: { type: "string", format: "date-time" },
                   document: { type: "object", properties: { id: { type: "string" }, title: { type: "string" }, url: { type: "string" } } },
+                  pageUrl: { type: ["string", "null"] },
                   settings: { ...ref("ViewerSettings"), description: "Every setting, as the viewer will use it." },
                 },
               },

@@ -223,6 +223,8 @@ export const apiViewerTokens = sqliteTable("api_viewer_tokens", {
     .notNull()
     .references(() => apiDocuments.id),
   settings: text("settings", { mode: "json" }).$type<ViewerSettingsInput>().notNull(),
+  // The page the link is embedded on, if the project said; a direct visit is sent back there.
+  pageUrl: text("page_url"),
   expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });

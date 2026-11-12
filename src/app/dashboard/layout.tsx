@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { hasDeveloperAccess } from "@/lib/users";
+import { checkSchema } from "@/lib/schema-check";
+import { SchemaWarning } from "./schema-warning";
 import { Logo } from "@/components/Logo";
 import { DashboardNav } from "./nav";
 import { logoutAction } from "./actions";
@@ -8,6 +10,8 @@ import { logoutAction } from "./actions";
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   const showDevelopers = await hasDeveloperAccess(session?.user.id);
+  const isAdmin = session?.user.role === "admin";
+  const schemaProblems = isAdmin ? await checkSchema() : null;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -18,7 +22,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </Link>
 
           <div className="flex items-center gap-7">
-            <DashboardNav isAdmin={session?.user.role === "admin"} showDevelopers={showDevelopers} />
+            <DashboardNav isAdmin={isAdmin} showDevelopers={showDevelopers} />
             <span className="h-5 w-px bg-gray-200" />
             <span className="text-[13.5px] text-gray-400">{session?.user.email}</span>
             <form action={logoutAction}>
@@ -32,7 +36,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
+      <main className="mx-auto max-w-6xl px-6 py-10">
+        {schemaProblems && <SchemaWarning problems={schemaProblems} />}
+        {children}
+      </main>
     </div>
   );
 }

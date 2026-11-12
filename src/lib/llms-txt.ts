@@ -36,7 +36,7 @@ When using flipbook-server.ts pass \`baseUrl: "${origin}"\`.
 
 - The secret key is server-only. Never put it in browser code. /api/v1 responses have no CORS headers.
 - The viewer only displays inside iframes on the project's listed website origins (Content-Security-Policy frame-ancestors). Add http://localhost:PORT while developing.
-- By default a project is "embedded-only": a viewer URL opened directly in a browser tab shows "This document can only be viewed on the website it's published on" instead of the document. This can be turned off on the project's page.
+- By default a project is "embedded-only": a viewer URL opened directly in a browser tab (e.g. a copied link) redirects to where the document is published instead of showing it — the \`pageUrl\` given when the link was created, else the page it was last viewed on, else the project's first website. Always pass \`pageUrl\` (the URL of the page the viewer is on) so that redirect lands on the right page. Embedded-only can be turned off on the project's page.
 - The viewer runs at ${origin} and fetches the PDF in the visitor's browser, so the PDF's storage must allow CORS GET from ${origin}, e.g. for S3/R2: \`[{ "AllowedOrigins": ["${origin}"], "AllowedMethods": ["GET"], "AllowedHeaders": ["*"] }]\`. Without it the viewer shows "Failed to load this PDF".
 - PDF URLs must be https (http only for localhost). Give the iframe \`allow="fullscreen"\`.
 - Viewer URLs expire (default 1 day). Create one when rendering the page, or cache and renew before \`expiresAt\`.
@@ -51,9 +51,10 @@ Every /api/v1 request: \`Authorization: Bearer fbsk_…\`.
 Request JSON:
 - \`document\` (required): \`{ "id": string (your ID, max 200), "title": string (max 300), "url": string (https URL of the PDF) }\`. Reusing an id updates its title and URL.
 - \`settings\` (optional): display settings below; override the project's defaults for this link.
+- \`pageUrl\` (optional, recommended): full URL of the page the viewer will be embedded on; must be on one of the project's website origins. Someone who opens the viewer URL on its own is redirected here.
 - \`expiresIn\` (optional): seconds, 60–2592000, default 86400.
 
-Response 201: \`{ "token": "vt_…", "url": "${origin}/v1/view/vt_…", "expiresAt": ISO date, "document": {…}, "settings": {every setting as the viewer will use it} }\`. Embed \`url\`.
+Response 201: \`{ "token": "vt_…", "url": "${origin}/v1/view/vt_…", "expiresAt": ISO date, "document": {…}, "pageUrl": string | null, "settings": {every setting as the viewer will use it} }\`. Embed \`url\`.
 
 Example:
 \`\`\`
@@ -86,6 +87,7 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
   const newsletter = await getNewsletter((await params).id); // from your own database
   const { url } = await flipbook.createViewerToken({
     document: { id: newsletter.id, title: newsletter.title, url: newsletter.pdfUrl },
+    pageUrl: \`https://your-site.example/newsletters/\${newsletter.id}\`, // this page's own address
   });
   return <Flipbook url={url} height="80vh" />;
 }

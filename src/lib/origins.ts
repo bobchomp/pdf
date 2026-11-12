@@ -48,3 +48,23 @@ export function normalizeOrigins(inputs: string[]): { origins: string[]; invalid
   }
   return { origins, invalid };
 }
+
+/**
+ * Whether a URL's origin is one of a project's allowed origins, with the same meaning as the
+ * frame-ancestors list they feed: "https://*.example.com" covers any subdomain, not the bare domain.
+ */
+export function isAllowedOrigin(url: string, allowedOrigins: string[]) {
+  let origin: URL;
+  try {
+    origin = new URL(url);
+  } catch {
+    return false;
+  }
+  const port = origin.port ? `:${origin.port}` : "";
+  return allowedOrigins.some((allowed) => {
+    const wildcard = /^(https?:\/\/)\*\.(.+)$/.exec(allowed);
+    if (!wildcard) return allowed === origin.origin;
+    const [, scheme, rest] = wildcard;
+    return `${origin.protocol}//` === scheme && origin.host.endsWith(`.${rest}`) && origin.host.length > rest.length + 1 && (rest.includes(":") || !port);
+  });
+}

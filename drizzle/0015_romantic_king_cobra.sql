@@ -1,0 +1,1 @@
+ALTER TABLE `api_viewer_tokens` ADD `page_url` text;

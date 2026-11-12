@@ -74,11 +74,11 @@ run(async () => {
   check('React: unmounts cleanly', !(await page.$('iframe')));
   await page.screenshot({ path: `${dir}/p4-react.png` });
 
-  // ---- Opened directly (not framed): projects are embedded-only by default, so a message, no errors
+  // ---- Opened directly (not framed): projects are embedded-only by default, so it redirects, no errors
   const direct = await ctx.newPage();
   direct.on('pageerror', (e) => errors.push(e.message));
   await direct.goto(url);
-  check('direct open shows the embedded-only message', (await direct.textContent('body')).includes("only be viewed on the website"));
+  check('direct open is sent to the website it was viewed on', direct.url() === 'http://localhost:4100/', direct.url());
   await direct.close();
 
   // ---- Events/stats through the helpers, after the views above

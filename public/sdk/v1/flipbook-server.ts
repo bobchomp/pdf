@@ -41,6 +41,7 @@ export type ViewerToken = {
   url: string;
   expiresAt: string;
   document: { id: string; title: string; url: string };
+  pageUrl: string | null;
   /** The settings the viewer will use, after project defaults and built-in ones are applied. */
   settings: Required<ViewerSettings>;
 };
@@ -140,10 +141,14 @@ export function createFlipbookClient({ apiKey, baseUrl = FLIPBOOK_DEFAULT_BASE_U
   };
 
   return {
-    /** A viewer link for one PDF. expiresIn is in seconds (60 to 2592000; default one day). */
+    /**
+     * A viewer link for one PDF. pageUrl is the page it'll be shown on (someone who opens the link
+     * on its own is sent there). expiresIn is in seconds (60 to 2592000; default one day).
+     */
     createViewerToken(input: {
       document: { id: string; title: string; url: string };
       settings?: ViewerSettings;
+      pageUrl?: string;
       expiresIn?: number;
     }) {
       return request<ViewerToken>("POST", "/api/v1/viewer-tokens", input);

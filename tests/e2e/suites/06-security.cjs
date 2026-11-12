@@ -26,18 +26,17 @@ run(async () => {
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   const { projectId, key } = await page.evaluate(async () => {
-    const p = await (await fetch("/api/developer/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Youth site", allowedOrigins: ["http://localhost:4100"] }) })).json();
+    const p = await (await fetch("/api/developer/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Youth site", allowedOrigins: ["http://localhost:4200", "http://localhost:4100"] }) })).json();
     const k = await (await fetch(`/api/developer/projects/${p.project.id}/keys`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "dev" }) })).json();
     return { projectId: p.project.id, key: k.key.key };
   });
-  const token = async () => {
-    const r = await fetch(`${BASE}/api/v1/viewer-tokens`, {
+  const createToken = (extra = {}, apiKey = key) =>
+    fetch(`${BASE}/api/v1/viewer-tokens`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ document: { id: "spring", title: "Spring newsletter", url: PDF_URL } }),
-    });
-    return (await r.json()).url;
-  };
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ document: { id: "spring", title: "Spring newsletter", url: PDF_URL }, ...extra }),
+    }).then(async (r) => ({ status: r.status, body: await r.json() }));
+  const token = async (extra) => (await createToken(extra)).body.url;
   const project = await (await fetch(`${BASE}/api/v1/project`, { headers: { Authorization: `Bearer ${key}` } })).json();
   check("new projects are embedded-only by default (and the API says so)", project.project.embedOnly === true);
 
@@ -47,14 +46,14 @@ run(async () => {
   // The page differs for a direct visit vs an embed, so no cache may keep a copy of it.
   check("viewer page is never cached", /no-store/.test(res.headers.get("cache-control") ?? ""), res.headers.get("cache-control"));
 
+  // Where a direct visit (a copied link opened in a tab) is sent, in order of preference.
   const direct = await ctx.newPage();
   direct.on("pageerror", (e) => errors.push(e.message));
   await direct.goto(url);
-  check("opened directly in a tab: message instead of the document", (await direct.textContent("body")).includes(BLOCKED) && !(await direct.$("[data-page-number]")));
+  check("opened directly, nothing else known: sent to the project's first website", direct.url() === "http://localhost:4200/", direct.url());
+  check("opened directly: the document never shows", !(await direct.$("[data-page-number]")));
   await sleep(500);
-  check("opened directly: tab doesn't show the document's title", (await direct.title()) === "Document unavailable", await direct.title());
   check("opened directly: no view recorded", db.prepare("SELECT count(*) n FROM api_views WHERE project_id=?").get(projectId).n === 0);
-  await direct.screenshot({ path: `${dir}/p5-direct-blocked.png` });
 
   await page.goto(`http://localhost:4100/?src=${encodeURIComponent(url)}`);
   const frame = await (await page.waitForSelector("#v")).contentFrame();
@@ -63,19 +62,45 @@ run(async () => {
   await sleep(500);
   check("embedded: view recorded", db.prepare("SELECT count(*) n FROM api_views WHERE project_id=?").get(projectId).n === 1);
 
+  await direct.goto(await token());
+  check("opened directly after it's been viewed: sent to the page it was last viewed on", direct.url() === "http://localhost:4100/", direct.url());
+
+  let r0 = await createToken({ pageUrl: "http://localhost:4200/newsletters/spring?x=1" });
+  check("pageUrl accepted and returned", r0.status === 201 && r0.body.pageUrl === "http://localhost:4200/newsletters/spring?x=1");
+  await direct.goto(r0.body.url);
+  check("opened directly with pageUrl: sent to that exact page", direct.url() === "http://localhost:4200/newsletters/spring?x=1", direct.url());
+  r0 = await createToken({ pageUrl: "https://evil.example/phish" });
+  check("pageUrl on another website refused (no open redirect)", r0.status === 400 && r0.body.error.message.startsWith("pageUrl:"), r0.body.error?.message);
+  r0 = await createToken({ pageUrl: "javascript:alert(1)" });
+  check("pageUrl must be a web address", r0.status === 400);
+
+  // A project with only wildcard websites has no single page to send people to: the message shows.
+  await page.goto(`${BASE}/dashboard`); // the dashboard's own API, signed in
+  const wildKey = await page.evaluate(async () => {
+    const p = await (await fetch("/api/developer/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Wild", allowedOrigins: ["https://*.example.com"] }) })).json();
+    return (await (await fetch(`/api/developer/projects/${p.project.id}/keys`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "k" }) })).json()).key.key;
+  });
+  await direct.goto((await createToken({}, wildKey)).body.url);
+  check("nowhere to send them: message instead", (await direct.textContent("body")).includes(BLOCKED) && (await direct.title()) === "Document unavailable");
+  await direct.screenshot({ path: `${dir}/p5-direct-blocked.png` });
+
   // The dashboard switch turns it off and on again.
   await page.goto(`${BASE}/dashboard/developers/${projectId}`);
   const toggle = 'button[role="switch"][aria-label="Only show documents on these websites"]';
   check("dashboard switch shows on", (await page.getAttribute(toggle, "aria-checked")) === "true");
   await page.click(toggle);
   await page.waitForSelector("text=Viewer links can now be opened directly too.");
+  check("switch stays off after saving", (await page.getAttribute(toggle, "aria-checked")) === "false");
   await direct.goto(await token());
   await rendered(direct.mainFrame());
-  check("switched off: direct link shows the document", !(await direct.textContent("body")).includes(BLOCKED));
+  check("switched off: direct link shows the document", direct.url().startsWith(`${BASE}/v1/view/`));
   await page.click(toggle);
   await page.waitForSelector("text=Viewer links now only work on this project's websites.");
+  check("switch stays on after saving", (await page.getAttribute(toggle, "aria-checked")) === "true");
+  await page.reload();
+  check("switch state survives a reload (read back from the database)", (await page.getAttribute(toggle, "aria-checked")) === "true");
   await direct.goto(await token());
-  check("switched back on: direct link blocked again", (await direct.textContent("body")).includes(BLOCKED));
+  check("switched back on: direct link redirected again", direct.url() === "http://localhost:4100/", direct.url());
   await direct.close();
 
   // ---- Webhook addresses (this suite runs the production build, where private targets are refused)

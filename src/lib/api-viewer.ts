@@ -1,11 +1,13 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { and, eq, isNull, ne, or } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or } from "drizzle-orm";
 import { db, schema } from "@/db/client";
 import { newId } from "@/lib/ids";
 import { parseUserAgent } from "@/lib/user-agent";
 import { getProject } from "@/lib/api-projects";
 import type { ViewerSettingsInput } from "@/lib/viewer-settings";
+import { isAllowedOrigin } from "@/lib/origins";
+import type { ApiProject, ApiViewerToken } from "@/db/schema";
 
 const TOKEN_PREFIX = "vt_";
 
@@ -29,7 +31,12 @@ async function upsertDocument(projectId: string, input: { id: string; title: str
 
 export async function createViewerToken(
   projectId: string,
-  input: { document: { id: string; title: string; url: string }; settings: ViewerSettingsInput; expiresInSeconds: number }
+  input: {
+    document: { id: string; title: string; url: string };
+    settings: ViewerSettingsInput;
+    pageUrl: string | null;
+    expiresInSeconds: number;
+  }
 ) {
   const documentId = await upsertDocument(projectId, input.document);
   const token = `${TOKEN_PREFIX}${randomBytes(24).toString("base64url")}`;
@@ -40,6 +47,7 @@ export async function createViewerToken(
     projectId,
     documentId,
     settings: input.settings,
+    pageUrl: input.pageUrl,
     expiresAt,
     createdAt: now,
   });
@@ -142,4 +150,27 @@ export async function setDocumentPageCount(documentId: string, pageCount: number
         or(isNull(schema.apiDocuments.pageCount), ne(schema.apiDocuments.pageCount, pageCount))
       )
     );
+}
+
+/**
+ * Where to send someone who opened a viewer link on its own: the page the link was made for,
+ * else the page this document was last viewed on, else the project's main website. Always on
+ * one of the project's allowed websites (re-checked here, as the list can change), so a viewer
+ * link can't redirect anywhere else. Null when there's nowhere suitable.
+ */
+export async function returnUrlFor(token: ApiViewerToken, project: ApiProject) {
+  const allowed = (url: string | null | undefined): url is string => !!url && isAllowedOrigin(url, project.allowedOrigins);
+  if (allowed(token.pageUrl)) return token.pageUrl;
+
+  const recent = await db
+    .select({ referrer: schema.apiViews.referrer })
+    .from(schema.apiViews)
+    .where(eq(schema.apiViews.documentId, token.documentId))
+    .orderBy(desc(schema.apiViews.viewedAt))
+    .limit(5);
+  const lastPage = recent.map((v) => v.referrer).find(allowed);
+  if (lastPage) return lastPage;
+
+  const main = project.allowedOrigins.find((o) => !o.includes("*"));
+  return main ? `${main}/` : null;
 }
