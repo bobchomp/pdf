@@ -37,28 +37,28 @@ function addColumnSql(table: string, column: SQLiteColumn) {
 export async function checkSchema(): Promise<SchemaProblems | null> {
   if (Date.now() - lastOk < OK_CACHE_MS) return null;
 
-  let rows: Array<{ table_name: string; column_name: string }>;
+  // One PRAGMA table_info per table. Cloudflare D1 refuses queries on sqlite_master and the
+  // pragma_table_info() function (SQLITE_AUTH), but allows this PRAGMA. A table that doesn't
+  // exist comes back with no rows.
+  const tables = (Object.values(schema) as unknown[])
+    .filter((value): value is SQLiteTable => is(value, SQLiteTable))
+    .map((table) => getTableConfig(table));
+  const actual = new Map<string, Set<string>>();
   try {
-    rows = (await db.all(
-      "SELECT m.name AS table_name, p.name AS column_name FROM sqlite_master m, pragma_table_info(m.name) p WHERE m.type = 'table'"
-    )) as Array<{ table_name: string; column_name: string }>;
+    await Promise.all(
+      tables.map(async ({ name }) => {
+        const rows = (await db.all(`PRAGMA table_info(\`${name}\`)`)) as unknown[][];
+        // Rows come back as arrays in PRAGMA order: cid, name, type, notnull, dflt_value, pk.
+        if (rows.length > 0) actual.set(name, new Set(rows.map((row) => String(row[1]))));
+      })
+    );
   } catch (err) {
     console.error("Schema check couldn't read the database's tables:", err);
     return null;
   }
 
-  const actual = new Map<string, Set<string>>();
-  for (const row of rows) {
-    // db.all returns each row as an array in select order.
-    const [table, column] = Array.isArray(row) ? (row as unknown as [string, string]) : [row.table_name, row.column_name];
-    if (!actual.has(table)) actual.set(table, new Set());
-    actual.get(table)!.add(column);
-  }
-
   const problems: SchemaProblems = { missingTables: [], missingColumns: [] };
-  for (const value of Object.values(schema)) {
-    if (!is(value, SQLiteTable)) continue;
-    const { name, columns } = getTableConfig(value);
+  for (const { name, columns } of tables) {
     const existing = actual.get(name);
     if (!existing) {
       problems.missingTables.push(name);

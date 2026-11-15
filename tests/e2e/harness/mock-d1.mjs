@@ -7,6 +7,10 @@ globalThis.fetch = async (input, init) => {
   const url = typeof input === "string" ? input : input.url;
   if (!D1.test(url)) return realFetch(input, init);
   const { sql, params } = JSON.parse(init.body);
+  // Like the real D1, refuse reads of SQLite's own schema tables and table-valued pragmas.
+  if (/sqlite_master|sqlite_schema|pragma_[a-z_]+\s*\(/i.test(sql)) {
+    return Response.json({ success: false, errors: [{ code: 7500, message: "not authorized: SQLITE_AUTH" }], result: [] }, { status: 400 });
+  }
   try {
     const args = (params ?? []).map((p) => (typeof p === "boolean" ? (p ? 1 : 0) : p));
     const rows = db.prepare(sql).all(...args); // objects keyed by column name, like D1
