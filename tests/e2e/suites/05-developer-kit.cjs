@@ -94,7 +94,7 @@ run(async () => {
   check('docs page public (no sign-in) with framing protection', res.status() === 200 && res.headers()['x-frame-options'] === 'DENY');
   check('docs title', (await docs.title()) === 'API docs | Smithton Church Newsletter', await docs.title());
   const rows = await docs.$$eval('#settings tbody tr', (trs) => trs.map((tr) => tr.children[0].textContent));
-  check('settings table lists all 16 settings', rows.length === 16 && rows.includes('startPage') && rows.includes('headerTextColor'));
+  check('settings table lists all 17 settings', rows.length === 17 && rows.includes('startPage') && rows.includes('headerTextColor') && rows.includes('showHints'));
   check('examples use this site\'s address', (await docs.textContent('#quick-start')).includes('http://localhost:3000/api/v1/viewer-tokens'));
   const anchors = await docs.$$eval('nav a', (as) => as.map((a) => a.getAttribute('href').slice(1)));
   const missing = [];
@@ -125,7 +125,7 @@ run(async () => {
   const spec = await fetch(`${BASE}/openapi.json`);
   const specJson = await spec.json();
   check('openapi.json served cross-origin', spec.headers.get('access-control-allow-origin') === '*' && specJson.servers[0].url === BASE);
-  check('openapi settings generated from validation schema', Object.keys(specJson.components.schemas.ViewerSettings.properties).length === 16 && !('startPage' in specJson.components.schemas.ProjectDefaultSettings.properties));
+  check('openapi settings generated from validation schema', Object.keys(specJson.components.schemas.ViewerSettings.properties).length === 17 && !('startPage' in specJson.components.schemas.ProjectDefaultSettings.properties));
   require('node:fs').writeFileSync(`${dir}/openapi.json`, JSON.stringify(specJson));
 
   // Developers page links to the docs.

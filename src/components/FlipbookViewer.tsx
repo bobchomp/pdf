@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import type { PDFDocumentProxy } from "pdfjs-dist";
@@ -19,6 +19,48 @@ const DEFAULT_PAGE_ASPECT = 500 / 700; // width/height fallback, used only until
 const NAV_BUTTON_SIZE = 40;
 const NAV_BUTTON_GAP = 16; // desired breathing room between a nav button and the book's edge
 const NAV_BUTTON_MIN_OFFSET = 8; // falls back to near the stage's own edge once the book fills the width
+
+// Touch screens get swipe/tap tips; mice and keyboards get click/arrow-key ones. Unknown on the
+// server, so the tips appear once the browser has said which it is.
+const COARSE_POINTER = "(pointer: coarse)";
+function subscribePointer(onChange: () => void) {
+  const query = window.matchMedia(COARSE_POINTER);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+const pointerKind = () => (window.matchMedia(COARSE_POINTER).matches ? "touch" : "mouse");
+
+function Key({ children }: { children: React.ReactNode }) {
+  return <kbd className="rounded border border-white/30 bg-white/10 px-1 font-sans text-[10px] leading-none">{children}</kbd>;
+}
+
+/** The "how to use it" pill in the corner of the viewer. */
+function HowToHints({ pointer, hasArrows, zoomable }: { pointer: "touch" | "mouse"; hasArrows: boolean; zoomable: boolean }) {
+  const turn =
+    pointer === "touch" ? (
+      <>Swipe{hasArrows ? " or tap the arrows" : ""} to turn pages</>
+    ) : (
+      <>
+        Turn pages with <Key>←</Key> <Key>→</Key>
+        {hasArrows ? " or the arrows" : ""}
+      </>
+    );
+  return (
+    <div
+      role="note"
+      aria-label="How to use this viewer"
+      className="pointer-events-none absolute right-3 top-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center justify-end gap-x-2 gap-y-0.5 rounded-full bg-gray-900/55 px-3.5 py-1.5 text-[11.5px] font-medium text-white shadow-sm backdrop-blur-sm sm:right-4 sm:top-4"
+    >
+      <span className="flex items-center gap-1">{turn}</span>
+      {zoomable && (
+        <>
+          <span aria-hidden className="text-white/50">·</span>
+          <span>{pointer === "touch" ? "Tap" : "Click"} a page to zoom</span>
+        </>
+      )}
+    </div>
+  );
+}
 
 type PageFlipController = {
   flipNext: () => void;
@@ -61,6 +103,7 @@ export function FlipbookViewer({
   allowDownload,
   allowPrint,
   showFullscreen = true,
+  showHints = true,
   showPageArrows = true,
   enableZoom = true,
   startPage = 1,
@@ -85,6 +128,8 @@ export function FlipbookViewer({
   allowDownload: boolean;
   allowPrint: boolean;
   showFullscreen?: boolean;
+  /** The "how to turn pages / zoom" tips in the corner. */
+  showHints?: boolean;
   showPageArrows?: boolean;
   enableZoom?: boolean;
   /** 1-based. */
@@ -117,6 +162,7 @@ export function FlipbookViewer({
   const rootRef = useRef<HTMLDivElement>(null);
   const flipBookRef = useRef<{ pageFlip: () => PageFlipController } | null>(null);
   const pageCount = knownPageCount || doc?.numPages || 0;
+  const pointer = useSyncExternalStore(subscribePointer, pointerKind, () => null);
   // Callers usually pass fresh closures each render; a ref keeps the effects below from re-running.
   const onPageViewRef = useRef(onPageView);
   useEffect(() => {
@@ -502,7 +548,14 @@ export function FlipbookViewer({
         </div>
       )}
 
-      <div ref={stageRef} className="relative flex min-h-0 w-full flex-1 items-center justify-center touch-manipulation overflow-hidden px-6 py-6 sm:px-12 sm:py-10">
+      <div
+        ref={stageRef}
+        // Extra room at the top when the tips are shown, so they never sit over the pages.
+        className={`relative flex min-h-0 w-full flex-1 items-center justify-center touch-manipulation overflow-hidden px-6 py-6 sm:px-12 sm:py-10 ${showHints ? "pt-12 sm:pt-16" : ""}`}
+      >
+        {isReady && showHints && pointer && !zoom && (
+          <HowToHints pointer={pointer} hasArrows={showPageArrows || showToolbar} zoomable={enableZoom} />
+        )}
         {!isReady && <p className="text-sm text-gray-400">Loading flipbook…</p>}
 
         {isReady && (

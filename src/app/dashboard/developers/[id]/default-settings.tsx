@@ -20,6 +20,7 @@ const toggles: Array<{ key: keyof Form; label: string }> = [
   { key: "showFullscreen", label: "Full screen button" },
   { key: "showPageArrows", label: "Page arrows beside the document" },
   { key: "enableZoom", label: "Click a page to zoom in" },
+  { key: "showHints", label: "Tips on turning pages and zooming" },
 ];
 
 /** The project's default display settings — what every viewer token starts from unless it says otherwise. */

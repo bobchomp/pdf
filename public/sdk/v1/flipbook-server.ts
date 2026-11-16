@@ -27,6 +27,8 @@ export type ViewerSettings = {
   showFullscreen?: boolean;
   showPageArrows?: boolean;
   enableZoom?: boolean;
+  /** The "how to turn pages / zoom" tip in the viewer's corner. */
+  showHints?: boolean;
   logoUrl?: string | null;
   logoLinkUrl?: string | null;
   /** 1-based. Viewer tokens only, not project defaults. */

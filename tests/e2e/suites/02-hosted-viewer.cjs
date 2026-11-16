@@ -93,6 +93,11 @@ run(async () => {
   check('viewer renders inside allowed site', true);
   check('viewer title is the document title', (await frame.title()) === 'Spring newsletter', await frame.title());
   check('header shows title', await frame.isVisible('text=Spring newsletter'));
+  const hintText = async (f) => ((await f.$('[role="note"][aria-label="How to use this viewer"]')) ? (await f.textContent('[role="note"][aria-label="How to use this viewer"]')).replace(/\s+/g, ' ').replace(/\s*·\s*/g, ' · ').trim() : null);
+  check('tips pill shown, worded for mouse and keyboard', (await hintText(frame)) === 'Turn pages with ← → or the arrows · Click a page to zoom', await hintText(frame));
+  const pillBox = await (await frame.$('[role="note"][aria-label="How to use this viewer"]')).boundingBox();
+  const pageBox = await (await frame.$('[data-page-number="1"] canvas')).boundingBox();
+  check('tips pill sits above the pages, not over them', pillBox.y + pillBox.height <= pageBox.y, JSON.stringify({ pill: pillBox.y + pillBox.height, page: pageBox.y }));
   check('page counter "1 / 6" (page count read from PDF)', (await frame.textContent('body')).includes('1 / 6'));
   await page.screenshot({ path: `${dir}/p2-host-default.png` });
   await sleep(800);
@@ -124,6 +129,7 @@ run(async () => {
   await clickBook(page);
   await sleep(700);
   check('click to zoom works by default', await frame.isVisible('button[aria-label="Close zoom"], [aria-label*="lose"]'));
+  check('tips pill hidden while zoomed in', !(await frame.$('[role="note"][aria-label="How to use this viewer"]')));
 
   // ---- Not allowed on another site
   await page.goto(`http://localhost:4200/?src=${encodeURIComponent(t1.url)}`);
@@ -153,6 +159,7 @@ run(async () => {
   await clickBook(page);
   await sleep(700);
   check('zoom disabled', !(await frame.isVisible('[aria-label*="lose"]')));
+  check('tips leave out zooming when zoom is off', (await hintText(frame)) === 'Turn pages with ← → or the arrows', await hintText(frame));
   await sleep(500);
   events = db.prepare("SELECT page_number FROM api_events e JOIN api_documents d ON d.id=e.document_id WHERE d.external_id='custom' AND e.type != 'view_start' ORDER BY e.seq").all();
   check('first page event uses start page', events[0]?.page_number === 3, JSON.stringify(events));
@@ -161,6 +168,22 @@ run(async () => {
   frame = await openInHost(page, r.body.url);
   await waitRendered(frame);
   check('showHeader false hides header', !(await frame.isVisible('text=1 / 6')));
+
+  r = await token(key, { document: doc({ id: 'nohints' }), settings: { showHints: false } });
+  frame = await openInHost(page, r.body.url);
+  await waitRendered(frame);
+  check('showHints false hides the tips', !(await frame.$('[role="note"][aria-label="How to use this viewer"]')));
+
+  // On a phone the tips talk about swiping and tapping.
+  const { devices } = require('playwright');
+  const phoneCtx = await browser.newContext({ ...devices['iPhone 13'] });
+  const phone = await phoneCtx.newPage();
+  r = await token(key, { document: doc({ id: 'phone' }) });
+  const phoneFrame = await openInHost(phone, r.body.url);
+  await waitRendered(phoneFrame);
+  check('tips worded for touch on a phone', (await hintText(phoneFrame)) === 'Swipe or tap the arrows to turn pages · Tap a page to zoom', await hintText(phoneFrame));
+  await phone.screenshot({ path: `${dir}/p6-hints-phone.png` });
+  await phoneCtx.close();
 
   // ---- Background image URL can't break out of CSS
   r = await token(key, { document: doc({ id: 'css' }), settings: { backgroundImageUrl: 'https://img.example.com/a");background-color:red;x:url("b' } });
@@ -243,6 +266,7 @@ run(async () => {
   await page.goto(`${BASE}/f/abc123`);
   await page.waitForFunction(() => [...document.querySelectorAll('[data-page-number] canvas')].some((c) => c.width > 0), null, { timeout: 15000 });
   check('own flipbook still renders', (await page.textContent('body')).includes('1 / 6'));
+  check('own flipbook shows the tips too', (await hintText(page.mainFrame())) === 'Turn pages with ← → or the arrows · Click a page to zoom', await hintText(page.mainFrame()));
   await page.screenshot({ path: `${dir}/p2-own-flipbook.png` });
   await page.click('button[aria-label="Next page"] >> nth=1');
   await sleep(900);

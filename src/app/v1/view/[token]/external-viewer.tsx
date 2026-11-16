@@ -86,6 +86,7 @@ export function ExternalViewer({
         showFullscreen={settings.showFullscreen}
         showPageArrows={settings.showPageArrows}
         enableZoom={settings.enableZoom}
+        showHints={settings.showHints}
         startPage={settings.startPage}
         onPageView={(pageNumber, pageCount) => {
           // The page count rides along once, so stats can show how many people reached the end.
